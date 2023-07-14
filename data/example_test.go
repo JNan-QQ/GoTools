@@ -36,3 +36,10 @@ func ExamplePop() {
 	fmt.Println(a, b)
 	// Output:[1 2 4 5] 3
 }
+
+func ExampleEqual() {
+	fmt.Println(Equal([]string{"1"}, []string{"1"}))
+	fmt.Println(Equal([]int{1}, []int{2}))
+	// Output:true
+	//false
+}
