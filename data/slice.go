@@ -1,3 +1,7 @@
+/*
+	切片相关操作
+*/
+
 package data
 
 // Contains 判断切片 array 中是否包含元素 ele
