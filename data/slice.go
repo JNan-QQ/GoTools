@@ -51,3 +51,16 @@ func Pop[E comparable](array []E, index int) ([]E, E) {
 
 	return append(array[:index], array[index+1:]...), s
 }
+
+// Equal 简单比较两切片内元素是否相同
+func Equal[E comparable](a, b []E) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
