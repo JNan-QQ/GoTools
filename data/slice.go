@@ -68,3 +68,12 @@ func Equal[E comparable](a, b []E) bool {
 	}
 	return true
 }
+
+func IsEmpty(array []string) bool {
+	for _, s := range array {
+		if s != "" {
+			return false
+		}
+	}
+	return true
+}
