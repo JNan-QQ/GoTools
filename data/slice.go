@@ -1,5 +1,5 @@
 /*
-	切片相关操作
+	基本类型切片相关操作
 */
 
 package data
@@ -70,6 +70,9 @@ func Equal[E comparable](a, b []E) bool {
 }
 
 func IsEmpty(array []string) bool {
+	if len(array) == 0 {
+		return true
+	}
 	for _, s := range array {
 		if s != "" {
 			return false
