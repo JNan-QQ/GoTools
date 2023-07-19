@@ -252,7 +252,7 @@ func (d *DataFrame) ReadFormXLS(sheet ...string) error {
 
 // MapCols 将 DataFrame 转化为 列切片
 func (d *DataFrame) MapCols(cols ...string) [][]any {
-	if cols != nil {
+	if cols == nil {
 		cols = d.DataFrame.Names()
 	}
 
