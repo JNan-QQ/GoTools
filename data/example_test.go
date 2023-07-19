@@ -43,3 +43,15 @@ func ExampleEqual() {
 	// Output:true
 	//false
 }
+
+func ExampleCn2an() {
+	n, _ := Cn2an("一万亿零六百万零二千四百")
+	fmt.Println(n)
+	// Output:1000006002400
+}
+
+func ExampleAn2cn() {
+	s, _ := An2cn(1000006002400)
+	fmt.Println(s)
+	// Output:一万亿零六百万零二千四百
+}
