@@ -144,8 +144,8 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 	return nil
 }
 
-// SaveXLSX 将 DataFrame 写入 XLSX 文档中
-func (d *DataFrame) SaveXLSX(path string) error {
+// WriteXLSX 将 DataFrame 写入 XLSX 文档中
+func (d *DataFrame) WriteXLSX(path string) error {
 	// 使用 NewFile 新建 Excel 工作薄，新创建的工作簿中会默认包含一个名为 Sheet1 的工作表
 	f := excelize.NewFile()
 	defer func(f *excelize.File) {
@@ -169,10 +169,10 @@ func (d *DataFrame) SaveXLSX(path string) error {
 
 }
 
-// SaveXLS 将 DataFrame 写入 XLS 文档中
+// WriteXLS 将 DataFrame 写入 XLS 文档中
 //
 //	TODO 待实现
-func (d *DataFrame) SaveXLS() {
+func (d *DataFrame) WriteXLS() {
 	// TODO
 }
 
