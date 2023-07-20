@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gitee.com/jn-qq/go-tools/data"
 	"github.com/go-gota/gota/dataframe"
+	"github.com/go-gota/gota/series"
 	"github.com/shakinm/xlsReader/xls"
 	"github.com/xuri/excelize/v2"
 	"path/filepath"
@@ -28,7 +29,7 @@ const (
 // Read 读取excel文档，返回 DataFrame
 //
 //	path: 文档路径 sheet: 读取的表格，默认Sheet1
-func Read(path string, sheet ...string) (*DataFrame, error) {
+func Read(path string, sheet ...string) (DataFrame, error) {
 
 	var err error
 
@@ -52,9 +53,9 @@ func Read(path string, sheet ...string) (*DataFrame, error) {
 	}
 
 	if err != nil {
-		return &DataFrame{}, err
+		return DataFrame{}, err
 	} else {
-		return &df, nil
+		return df, nil
 	}
 
 }
@@ -253,12 +254,12 @@ func (d *DataFrame) ReadFormXLS(sheet ...string) error {
 // MapCols 将 DataFrame 转化为 列切片
 func (d *DataFrame) MapCols(cols ...string) [][]any {
 	if cols == nil {
-		cols = d.DataFrame.Names()
+		cols = d.Names()
 	}
 
 	var pd [][]any
 	for _, colName := range cols {
-		seriesCol := d.DataFrame.Col(colName)
+		seriesCol := d.Col(colName)
 		var col []any
 		for ii := 0; ii < seriesCol.Len(); ii++ {
 			col = append(col, seriesCol.Elem(ii).Val())
@@ -268,4 +269,27 @@ func (d *DataFrame) MapCols(cols ...string) [][]any {
 
 	return pd
 
+}
+
+func (d *DataFrame) FormatCols(f func(elem any) any, colName ...string) {
+
+	// 获取指定列数据集
+	ds := d.Select(colName)
+
+	// 整理格式
+	ds = ds.Capply(func(elems series.Series) series.Series {
+		var newElems []any
+		for i := 0; i < elems.Len(); i++ {
+			// 处理数据
+			elem := f(elems.Elem(i).Val())
+			// 返回新数据针
+			newElems = append(newElems, elem)
+		}
+		return series.New(newElems, elems.Type(), elems.Name)
+	})
+
+	// 更新数据集
+	for _, name := range ds.Names() {
+		d.DataFrame = d.Mutate(ds.Col(name))
+	}
 }
