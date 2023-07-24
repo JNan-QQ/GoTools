@@ -117,7 +117,7 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 							break
 						}
 						if i == len(row)-1 {
-							colNum = append(colNum, i)
+							colNum = append(colNum, i+1)
 						}
 					}
 				}
