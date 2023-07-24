@@ -155,8 +155,7 @@ func (d *DataFrame) WriteXLSX(path string) error {
 
 	// 整理数据
 	for i, colVals := range d.MapCols() {
-		err := f.SetSheetCol("Sheet1", data.Int2AAA(i+1)+"1", colVals)
-		if err != nil {
+		if err := f.SetSheetCol("Sheet1", data.Int2AAA(i+1)+"1", &colVals); err != nil {
 			return err
 		}
 	}
@@ -259,8 +258,13 @@ func (d *DataFrame) MapCols(cols ...string) [][]any {
 
 	var pd [][]any
 	for _, colName := range cols {
-		seriesCol := d.Col(colName)
+
 		var col []any
+		// 写入表头
+		col = append(col, colName)
+
+		// 遍历列的值
+		seriesCol := d.Col(colName)
 		for ii := 0; ii < seriesCol.Len(); ii++ {
 			col = append(col, seriesCol.Elem(ii).Val())
 		}
