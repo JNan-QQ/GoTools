@@ -7,15 +7,15 @@ import (
 
 func ExampleRead() {
 
-	df, err := Read("test.xls")
-	if err != nil {
-		panic(err)
+	df := Read("test.xls")
+	if df.Error() != nil {
+		panic(df.Error())
 	}
 	fmt.Println(df)
 
-	df1, err := Read("test.xlsx")
-	if err != nil {
-		panic(err)
+	df1 := Read("test.xlsx")
+	if df1.Error() != nil {
+		panic(df.Error())
 	}
 	fmt.Println(df1)
 }

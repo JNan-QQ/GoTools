@@ -19,6 +19,7 @@ import (
 type DataFrame struct {
 	dataframe.DataFrame
 	filePath string
+	sheet    []string
 }
 
 const (
@@ -29,43 +30,39 @@ const (
 // Read 读取excel文档，返回 DataFrame
 //
 //	path: 文档路径 sheet: 读取的表格，默认Sheet1
-func Read(path string, sheet ...string) (DataFrame, error) {
-
-	var err error
-
-	df := DataFrame{filePath: path}
+func Read(path string, sheet ...string) DataFrame {
 
 	// 设置默认读取工作部名称
 	if sheet == nil {
 		sheet = append(sheet, "Sheet1")
 	}
 
+	// 构造
+	df := DataFrame{filePath: path, sheet: sheet}
+
+	// 读取数据
 	switch strings.Split(filepath.Base(path), ".")[1] {
 
 	case XLS:
-		err = df.ReadFormXLS(sheet...)
+		df.readFormXLS()
 
 	case XLSX:
-		err = df.ReadFromXLSX(sheet...)
+		df.readFromXLSX()
 
 	default:
-		err = fmt.Errorf("不支持的文件类型")
+		df.Err = fmt.Errorf("不支持的文件类型")
 	}
 
-	if err != nil {
-		return DataFrame{}, err
-	} else {
-		return df, nil
-	}
-
+	return df
 }
 
 // ReadFromXLSX 从 XLSX 格式文档里读取数据
-func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
+func (d *DataFrame) readFromXLSX() {
 	// 读取文档
 	f, err := excelize.OpenFile(d.filePath)
 	if err != nil {
-		return err
+		d.Err = err
+		return
 	}
 	defer func(f *excelize.File) {
 		err := f.Close()
@@ -81,7 +78,7 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 	for _, sn := range f.GetSheetList() {
 
 		// 跳过
-		if !data.Contains(sheet, sn) {
+		if !data.Contains(d.sheet, sn) {
 			continue
 		}
 
@@ -92,12 +89,14 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 		// 行迭代器
 		rows, err := f.Rows(sn)
 		if err != nil {
-			return err
+			d.Err = err
+			return
 		}
 		for rows.Next() {
 			row, err := rows.Columns()
 			if err != nil {
-				return err
+				d.Err = err
+				return
 			}
 
 			if data.IsEmpty(row) {
@@ -127,7 +126,8 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 					header = append(header, hd...)
 				} else {
 					if !data.Equal(header, hd) {
-						return fmt.Errorf("读取多工作簿发现表头不一致,请确认")
+						d.Err = fmt.Errorf("读取多工作簿发现表头不一致,请确认")
+						return
 					}
 				}
 				continue
@@ -141,8 +141,6 @@ func (d *DataFrame) ReadFromXLSX(sheet ...string) error {
 	}
 
 	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...))
-
-	return nil
 }
 
 // WriteXLSX 将 DataFrame 写入 XLSX 文档中
@@ -169,19 +167,13 @@ func (d *DataFrame) WriteXLSX(path string) error {
 
 }
 
-// WriteXLS 将 DataFrame 写入 XLS 文档中
-//
-//	TODO 待实现
-func (d *DataFrame) WriteXLS() {
-	// TODO
-}
-
-// ReadFormXLS 从 XLS 格式文档里读取数据
-func (d *DataFrame) ReadFormXLS(sheet ...string) error {
+// 从 XLS 格式文档里读取数据
+func (d *DataFrame) readFormXLS() {
 
 	workbook, err := xls.OpenFile(d.filePath)
 	if err != nil {
-		return err
+		d.Err = err
+		return
 	}
 
 	var header []string
@@ -189,7 +181,7 @@ func (d *DataFrame) ReadFormXLS(sheet ...string) error {
 
 	for _, sn := range workbook.GetSheets() {
 		// 跳过
-		if !data.Contains(sheet, sn.GetName()) {
+		if !data.Contains(d.sheet, sn.GetName()) {
 			continue
 		}
 
@@ -231,7 +223,8 @@ func (d *DataFrame) ReadFormXLS(sheet ...string) error {
 					header = append(header, hd...)
 				} else {
 					if !data.Equal(header, hd) {
-						return fmt.Errorf("读取多工作簿发现表头不一致,请确认")
+						d.Err = fmt.Errorf("读取多工作簿发现表头不一致,请确认")
+						return
 					}
 				}
 				continue
@@ -245,9 +238,6 @@ func (d *DataFrame) ReadFormXLS(sheet ...string) error {
 	}
 
 	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...))
-
-	return nil
-
 }
 
 // MapCols 将 DataFrame 转化为 列切片
