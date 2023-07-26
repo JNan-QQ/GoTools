@@ -55,3 +55,9 @@ func ExampleAn2cn() {
 	fmt.Println(s)
 	// Output:一万亿零六百万零二千四百
 }
+
+func ExampleRepeatIndex() {
+	a := []int{1, 3, 5, 7, 9, 2, 5, 3, 7, 1, 10}
+	fmt.Println(RepeatIndex(a))
+	// Output: map[1:[0 9] 3:[1 7] 5:[2 6] 7:[3 8]]
+}

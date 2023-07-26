@@ -80,3 +80,23 @@ func IsEmpty(array []string) bool {
 	}
 	return true
 }
+func RepeatIndex[E comparable](array []E) map[E][]int {
+
+	result := map[E][]int{}
+
+	for i, e := range array {
+		if _, ok := result[e]; ok {
+			result[e] = append(result[e], i)
+		} else {
+			result[e] = []int{i}
+		}
+	}
+
+	for key, value := range result {
+		if len(value) == 1 {
+			delete(result, key)
+		}
+	}
+
+	return result
+}
