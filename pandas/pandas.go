@@ -12,6 +12,7 @@ import (
 	"github.com/shakinm/xlsReader/xls"
 	"github.com/xuri/excelize/v2"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -307,4 +308,16 @@ func (d *DataFrame) SetType(t map[string]series.Type) {
 
 		d.DataFrame = d.Mutate(news)
 	}
+}
+
+// Row 返回一行的数据帧，数据类型字符串
+func (d *DataFrame) Row(row int)series.Series {
+
+	var val []string
+
+	for c, _ := range d.Names() {
+		val = append(val, d.Elem(row,c).String())
+	}
+
+	return series.New(val,series.String, strconv.Itoa(row))
 }
