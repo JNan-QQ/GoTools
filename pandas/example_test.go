@@ -3,6 +3,7 @@ package pandas
 import (
 	"fmt"
 	"github.com/go-gota/gota/dataframe"
+	"github.com/go-gota/gota/series"
 )
 
 func ExampleRead() {
@@ -63,4 +64,22 @@ func ExampleDataFrame_WriteXLSX() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ExampleDataFrame_SetType() {
+	df := DataFrame{}
+	df.DataFrame = dataframe.LoadRecords(
+		[][]string{
+			{"A", "B", "C", "D"},
+			{"a", "4", "5.1", "true"},
+			{"k", "5", "7.0", "true"},
+			{"k", "4", "6.0", "true"},
+			{"a", "2", "7.1", "false"},
+		},
+	)
+	fmt.Println(df)
+
+	df.SetType(map[string]series.Type{"D": series.Int, "C": series.String})
+
+	fmt.Println(df)
 }
