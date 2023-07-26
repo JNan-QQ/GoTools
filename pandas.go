@@ -265,6 +265,10 @@ func (d *DataFrame) MapCols(cols ...string) [][]any {
 
 }
 
+// FormatCols 批量格式化列
+//
+//	f(elem any) any：处理函数，elem 为列的每个数值，注意判断数据类型
+//	colName：适用函f数整理的列名
 func (d *DataFrame) FormatCols(f func(elem any) any, colName ...string) {
 
 	// 获取指定列数据集
@@ -285,5 +289,22 @@ func (d *DataFrame) FormatCols(f func(elem any) any, colName ...string) {
 	// 更新数据集
 	for _, name := range ds.Names() {
 		d.DataFrame = d.Mutate(ds.Col(name))
+	}
+}
+
+// SetType 设置列的数据类型，如果数据转换失败默认设置为文本类型
+func (d *DataFrame) SetType(t map[string]series.Type) {
+
+	if t == nil {
+		return
+	}
+
+	for col, _type := range t {
+		news := series.New(d.MapCols(col)[0][1:], _type, col)
+		if news.HasNaN() {
+			news = series.New(d.MapCols(col)[0][1:], series.String, col)
+		}
+
+		d.DataFrame = d.Mutate(news)
 	}
 }
