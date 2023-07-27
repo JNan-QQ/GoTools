@@ -134,6 +134,10 @@ func (d *DataFrame) readFromXLSX() {
 				continue
 			}
 
+			// 行结尾有空白补充长度
+			for i := colNum[1]; i > len(row); i-- {
+				row = append(row, "")
+			}
 			// 获取数据体
 			xlsxData = append(xlsxData, row[colNum[0]:colNum[1]])
 
@@ -231,6 +235,10 @@ func (d *DataFrame) readFormXLS() {
 				continue
 			}
 
+			// 行结尾有空白补充长度
+			for i := colNum[1]; i > len(row); i-- {
+				row = append(row, "")
+			}
 			// 获取数据体
 			xlsxData = append(xlsxData, row[colNum[0]:colNum[1]])
 
@@ -311,13 +319,13 @@ func (d *DataFrame) SetType(t map[string]series.Type) {
 }
 
 // Row 返回一行的数据帧，数据类型字符串
-func (d *DataFrame) Row(row int)series.Series {
+func (d *DataFrame) Row(row int) series.Series {
 
 	var val []string
 
 	for c, _ := range d.Names() {
-		val = append(val, d.Elem(row,c).String())
+		val = append(val, d.Elem(row, c).String())
 	}
 
-	return series.New(val,series.String, strconv.Itoa(row))
+	return series.New(val, series.String, strconv.Itoa(row))
 }
