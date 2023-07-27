@@ -16,7 +16,7 @@ func ExampleRead() {
 
 	df1 := Read("test.xlsx")
 	if df1.Error() != nil {
-		panic(df.Error())
+		panic(df1.Error())
 	}
 	fmt.Println(df1)
 }
