@@ -56,17 +56,18 @@ func Pop[E comparable](array []E, index int) ([]E, E) {
 	return append(array[:index], array[index+1:]...), s
 }
 
-// Equal 简单比较两切片内元素是否相同
-func Equal[E comparable](a, b []E) bool {
+// Equal 简单比较两切片内元素是否相同,并返回第一个不相同索引
+//	如果相同返回-2，如果长度不同返回-1
+func Equal[E comparable](a, b []E) (bool,int) {
 	if len(a) != len(b) {
-		return false
+		return false,-1
 	}
 	for i := 0; i < len(a); i++ {
 		if a[i] != b[i] {
-			return false
+			return false,i
 		}
 	}
-	return true
+	return true,-2
 }
 
 func IsEmpty(array []string) bool {

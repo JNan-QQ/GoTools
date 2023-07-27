@@ -38,10 +38,15 @@ func ExamplePop() {
 }
 
 func ExampleEqual() {
-	fmt.Println(Equal([]string{"1"}, []string{"1"}))
-	fmt.Println(Equal([]int{1}, []int{2}))
-	// Output:true
-	//false
+
+	s, i := Equal([]string{"1"}, []string{"1"})
+	fmt.Println(s, i)
+
+	s, i = Equal([]int{1}, []int{2})
+	fmt.Println(s, i)
+
+	// Output:true -2
+	//false 0
 }
 
 func ExampleCn2an() {
