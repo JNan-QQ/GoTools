@@ -126,7 +126,7 @@ func (d *DataFrame) readFromXLSX() {
 				if header == nil {
 					header = append(header, hd...)
 				} else {
-					if !data.Equal(header, hd) {
+					if flg, _ := data.Equal(header, hd); !flg {
 						d.Err = fmt.Errorf("读取多工作簿发现表头不一致,请确认")
 						return
 					}
@@ -227,7 +227,7 @@ func (d *DataFrame) readFormXLS() {
 				if header == nil {
 					header = append(header, hd...)
 				} else {
-					if !data.Equal(header, hd) {
+					if flg, _ := data.Equal(header, hd); !flg {
 						d.Err = fmt.Errorf("读取多工作簿发现表头不一致,请确认")
 						return
 					}
