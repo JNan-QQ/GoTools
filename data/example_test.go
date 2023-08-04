@@ -66,3 +66,15 @@ func ExampleRepeatIndex() {
 	fmt.Println(RepeatIndex(a))
 	// Output: map[1:[0 9] 3:[1 7] 5:[2 6] 7:[3 8]]
 }
+
+func ExampleMD5() {
+	var s MD5 = "123456"
+	fmt.Println(s.Encrypt())
+	fmt.Println(s.Encrypt().IsBig())
+	fmt.Println(s.Encrypt().IsShort().IsBig())
+	fmt.Printf("%T %s", s.Encrypt(), s.Encrypt().ToString())
+	// Output:e10adc3949ba59abbe56e057f20f883e
+	//E10ADC3949BA59ABBE56E057F20F883E
+	//49BA59ABBE56E057
+	//data.MD5 e10adc3949ba59abbe56e057f20f883e
+}
