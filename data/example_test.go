@@ -78,3 +78,16 @@ func ExampleMD5() {
 	//49BA59ABBE56E057
 	//data.MD5 e10adc3949ba59abbe56e057f20f883e
 }
+
+func ExampleJsonString_Find() {
+	j := JsonString(`{"name":"jjs","age":18,"love":[123,45],"info":{"grade":7,"d":[60,70,80,90],"desc":"good"},"s":{"a":1,"b":2}}`)
+
+	find, _ := j.Find("info.d.[0]")
+	fmt.Println(find)
+
+	find, _ = j.FindInt("info.grade")
+	fmt.Println(find)
+
+	// Output:60
+	//7
+}
