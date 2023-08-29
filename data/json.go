@@ -84,24 +84,36 @@ func (j JsonString) Find(relational string) (any, error) {
 
 // FindString 返回字符串
 func (j JsonString) FindString(relational string) string {
-	find, _ := j.Find(relational)
+	find, err := j.Find(relational)
+	if err != nil {
+		return ""
+	}
 	return find.(string)
 }
 
 // FindInt 返回整数
 func (j JsonString) FindInt(relational string) int {
-	find, _ := j.Find(relational)
+	find, err := j.Find(relational)
+	if err != nil {
+		return 0
+	}
 	return int(find.(float64))
 }
 
 // FindFloat 返回浮点数
 func (j JsonString) FindFloat(relational string) float64 {
-	find, _ := j.Find(relational)
+	find, err := j.Find(relational)
+	if err != nil {
+		return 0.0
+	}
 	return find.(float64)
 }
 
 // FindBool 返回布尔值
 func (j JsonString) FindBool(relational string) bool {
-	find, _ := j.Find(relational)
+	find, err := j.Find(relational)
+	if err != nil {
+		return false
+	}
 	return find.(bool)
 }
