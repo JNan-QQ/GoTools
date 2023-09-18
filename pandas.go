@@ -41,8 +41,10 @@ func Read(path string, sheet ...string) DataFrame {
 	// 构造
 	df := DataFrame{filePath: path, sheet: sheet}
 
+	fileObj :=strings.Split(filepath.Base(path), ".")
+
 	// 读取数据
-	switch strings.Split(filepath.Base(path), ".")[1] {
+	switch fileObj[len(fileObj)-1] {
 
 	case XLS:
 		df.readFormXLS()
