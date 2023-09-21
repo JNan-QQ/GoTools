@@ -41,7 +41,7 @@ func Read(path string, sheet ...string) DataFrame {
 	// 构造
 	df := DataFrame{filePath: path, sheet: sheet}
 
-	fileObj :=strings.Split(filepath.Base(path), ".")
+	fileObj := strings.Split(filepath.Base(path), ".")
 
 	// 读取数据
 	switch fileObj[len(fileObj)-1] {
@@ -309,10 +309,10 @@ func (d *DataFrame) SetType(t map[string]series.Type) {
 	if t == nil {
 		return
 	}
-	cols:=d.Names()
+	cols := d.Names()
 
 	for col, _type := range t {
-		if data.Contains(cols,col){
+		if data.Contains(cols, col) {
 			news := series.New(d.MapCols(col)[0][1:], _type, col)
 			if news.HasNaN() {
 				news = series.New(d.MapCols(col)[0][1:], series.String, col)
@@ -336,8 +336,8 @@ func (d *DataFrame) Row(row int) series.Series {
 
 // SelectCols 按指定顺序选择列
 func (d *DataFrame) SelectCols(col ...string) DataFrame {
-	df:=DataFrame{}
-	cols:=d.Names()
+	df := DataFrame{}
+	cols := d.Names()
 	for _, name := range col {
 		if data.Contains(cols, name) {
 			df.DataFrame = df.Mutate(d.Col(name))
@@ -347,11 +347,23 @@ func (d *DataFrame) SelectCols(col ...string) DataFrame {
 }
 
 // RenameCols 批量命名
-func (d *DataFrame) RenameCols(col map[string]string)  {
-	cols:=d.Names()
+func (d *DataFrame) RenameCols(col map[string]string) {
+	cols := d.Names()
 	for oldCol, newCol := range col {
-		if data.Contains(cols,oldCol){
-			d.DataFrame = d.Rename(newCol,oldCol)
+		if data.Contains(cols, oldCol) {
+			d.DataFrame = d.Rename(newCol, oldCol)
 		}
 	}
+}
+
+// DropCols 批量删除
+func (d *DataFrame) DropCols(col ...string) {
+	cols := d.Names()
+	var drops []string
+	for _, name := range col {
+		if data.Contains(cols, name) {
+			drops = append(drops, name)
+		}
+	}
+	d.DataFrame = d.Drop(drops)
 }
