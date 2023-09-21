@@ -83,3 +83,20 @@ func ExampleDataFrame_SetType() {
 
 	fmt.Println(df)
 }
+
+func ExampleDataFrame_SelectCols() {
+	df := DataFrame{}
+	df.DataFrame = dataframe.LoadRecords(
+		[][]string{
+			{"A", "B", "C", "D"},
+			{"a", "4", "5.1", "true"},
+			{"k", "5", "7.0", "true"},
+			{"k", "4", "6.0", "true"},
+			{"a", "2", "7.1", "false"},
+		},
+	)
+
+	df = df.SelectCols("D", "B")
+
+	fmt.Println(df)
+}

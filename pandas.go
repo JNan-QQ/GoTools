@@ -336,14 +336,15 @@ func (d *DataFrame) Row(row int) series.Series {
 
 // SelectCols 按指定顺序选择列
 func (d *DataFrame) SelectCols(col ...string) DataFrame {
-	df := DataFrame{}
+
 	cols := d.Names()
+	var seriesList []series.Series
 	for _, name := range col {
 		if data.Contains(cols, name) {
-			df.DataFrame = df.Mutate(d.Col(name))
+			seriesList = append(seriesList, d.Col(name))
 		}
 	}
-	return df
+	return DataFrame{DataFrame: dataframe.New(seriesList...)}
 }
 
 // RenameCols 批量命名
