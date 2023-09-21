@@ -309,14 +309,16 @@ func (d *DataFrame) SetType(t map[string]series.Type) {
 	if t == nil {
 		return
 	}
+	cols:=d.Names()
 
 	for col, _type := range t {
-		news := series.New(d.MapCols(col)[0][1:], _type, col)
-		if news.HasNaN() {
-			news = series.New(d.MapCols(col)[0][1:], series.String, col)
+		if data.Contains(cols,col){
+			news := series.New(d.MapCols(col)[0][1:], _type, col)
+			if news.HasNaN() {
+				news = series.New(d.MapCols(col)[0][1:], series.String, col)
+			}
+			d.DataFrame = d.Mutate(news)
 		}
-
-		d.DataFrame = d.Mutate(news)
 	}
 }
 
@@ -330,4 +332,26 @@ func (d *DataFrame) Row(row int) series.Series {
 	}
 
 	return series.New(val, series.String, strconv.Itoa(row))
+}
+
+// SelectCols 按指定顺序选择列
+func (d *DataFrame) SelectCols(col ...string) DataFrame {
+	df:=DataFrame{}
+	cols:=d.Names()
+	for _, name := range col {
+		if data.Contains(cols, name) {
+			df.DataFrame = df.Mutate(d.Col(name))
+		}
+	}
+	return df
+}
+
+// RenameCols 批量命名
+func (d *DataFrame) RenameCols(col map[string]string)  {
+	cols:=d.Names()
+	for oldCol, newCol := range col {
+		if data.Contains(cols,oldCol){
+			d.DataFrame = d.Rename(newCol,oldCol)
+		}
+	}
 }
