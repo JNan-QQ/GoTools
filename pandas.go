@@ -334,18 +334,6 @@ func (d *DataFrame) Row(row int) series.Series {
 	return series.New(val, series.String, strconv.Itoa(row))
 }
 
-// SelectCols 按指定顺序选择列
-func (d *DataFrame) SelectCols(col ...string) DataFrame {
-
-	cols := d.Names()
-	var seriesList []series.Series
-	for _, name := range col {
-		if data.Contains(cols, name) {
-			seriesList = append(seriesList, d.Col(name))
-		}
-	}
-	return DataFrame{DataFrame: dataframe.New(seriesList...)}
-}
 
 // RenameCols 批量命名
 func (d *DataFrame) RenameCols(col map[string]string) {
