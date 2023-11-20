@@ -23,6 +23,13 @@ func ExampleContains() {
 	//false
 }
 
+func ExampleIndexS() {
+	fmt.Println(IndexS([]string{"a", "B", "c"}, "a"))
+	fmt.Println(IndexS([]string{"a", "B", "c"}, "b"))
+	// Output:0
+	//-1
+}
+
 func ExampleInsert() {
 	a := []int{1, 2, 3, 4, 5}
 	a = Insert(a, 2, 7, 8, 9)
@@ -85,7 +92,7 @@ func ExampleJsonString_Find() {
 	find, _ := j.Find("info.d.[0]")
 	fmt.Println(find)
 
-	find, _ = j.FindInt("info.grade")
+	find = j.FindInt("info.grade")
 	fmt.Println(find)
 
 	// Output:60

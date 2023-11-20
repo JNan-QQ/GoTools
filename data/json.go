@@ -18,7 +18,7 @@ func (j JsonString) Check() bool {
 func (j JsonString) formatRelation(relation string) (result []map[string]string, err error) {
 
 	for _, s := range strings.Split(relation, ".") {
-		isSlice, err := regexp.MatchString(`\[\d+\]`, s)
+		isSlice, err := regexp.MatchString(`\[\d+]`, s)
 		if err != nil {
 			return nil, err
 		}
