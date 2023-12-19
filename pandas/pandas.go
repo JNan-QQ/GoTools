@@ -21,6 +21,7 @@ type DataFrame struct {
 	dataframe.DataFrame
 	filePath string
 	sheet    []string
+	sType    map[string]series.Type
 }
 
 const (
@@ -30,8 +31,8 @@ const (
 
 // Read 读取excel文档，返回 DataFrame
 //
-//	path: 文档路径 sheet: 读取的表格，默认Sheet1
-func Read(path string, sheet ...string) DataFrame {
+//	path: 文档路径 sType: 自定义列格式 sheet: 读取的表格，默认Sheet1
+func Read(path string, sType map[string]series.Type, sheet ...string) DataFrame {
 
 	// 设置默认读取工作部名称
 	if sheet == nil {
@@ -39,7 +40,7 @@ func Read(path string, sheet ...string) DataFrame {
 	}
 
 	// 构造
-	df := DataFrame{filePath: path, sheet: sheet}
+	df := DataFrame{filePath: path, sheet: sheet, sType: sType}
 
 	fileObj := strings.Split(filepath.Base(path), ".")
 
@@ -147,7 +148,7 @@ func (d *DataFrame) readFromXLSX() {
 		_ = rows.Close()
 	}
 
-	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...))
+	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...), dataframe.WithTypes(d.sType))
 }
 
 // WriteXLSX 将 DataFrame 写入 XLSX 文档中
@@ -248,7 +249,7 @@ func (d *DataFrame) readFormXLS() {
 
 	}
 
-	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...))
+	d.DataFrame = dataframe.LoadRecords(append([][]string{header}, xlsxData...), dataframe.WithTypes(d.sType))
 }
 
 // MapCols 将 DataFrame 转化为 列切片
@@ -333,7 +334,6 @@ func (d *DataFrame) Row(row int) series.Series {
 
 	return series.New(val, series.String, strconv.Itoa(row))
 }
-
 
 // RenameCols 批量命名
 func (d *DataFrame) RenameCols(col map[string]string) {

@@ -8,13 +8,13 @@ import (
 
 func ExampleRead() {
 
-	df := Read("test.xls")
+	df := Read("test.xls", nil)
 	if df.Error() != nil {
 		panic(df.Error())
 	}
 	fmt.Println(df)
 
-	df1 := Read("test.xlsx")
+	df1 := Read("test.xlsx", map[string]series.Type{"A": series.Int})
 	if df1.Error() != nil {
 		panic(df1.Error())
 	}
@@ -80,23 +80,6 @@ func ExampleDataFrame_SetType() {
 	fmt.Println(df)
 
 	df.SetType(map[string]series.Type{"D": series.Int, "C": series.String})
-
-	fmt.Println(df)
-}
-
-func ExampleDataFrame_SelectCols() {
-	df := DataFrame{}
-	df.DataFrame = dataframe.LoadRecords(
-		[][]string{
-			{"A", "B", "C", "D"},
-			{"a", "4", "5.1", "true"},
-			{"k", "5", "7.0", "true"},
-			{"k", "4", "6.0", "true"},
-			{"a", "2", "7.1", "false"},
-		},
-	)
-
-	df = df.SelectCols("D", "B")
 
 	fmt.Println(df)
 }
