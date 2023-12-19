@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Int2AAA 将表格列索引（int）转换为列名(string)
@@ -119,6 +120,7 @@ func Cn2an(cn string) (int, error) {
 	return out, nil
 }
 
+// An2cn 阿拉伯数字转汉字
 func An2cn(an int) (string, error) {
 
 	var out string
@@ -141,4 +143,14 @@ func An2cn(an int) (string, error) {
 	out = strings.Trim(re.ReplaceAllString(out, "零"), "零")
 
 	return out, nil
+}
+
+// IsDigit 判断字符串是否为全数字
+func IsDigit(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

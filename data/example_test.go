@@ -98,3 +98,11 @@ func ExampleJsonString_Find() {
 	// Output:60
 	//7
 }
+
+func ExampleIsDigit() {
+	fmt.Println(IsDigit("123"))
+	fmt.Println(IsDigit("123a"))
+
+	// Output:true
+	//false
+}
