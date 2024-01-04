@@ -57,7 +57,7 @@ func ExampleEqual() {
 }
 
 func ExampleCn2an() {
-	n, _ := Cn2an("一万亿零六百万零二千四百")
+	n, _ := Cn2an("二十一")
 	fmt.Println(n)
 	// Output:1000006002400
 }

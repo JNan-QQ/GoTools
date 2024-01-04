@@ -97,6 +97,10 @@ func Cn2an(cn string) (int, error) {
 		cnList = Insert(cnList, 0, string(b))
 	}
 
+	if _, ok := unitCn2an[cnList[len(cnList)-1]]; ok {
+		cnList = append(cnList, "一")
+	}
+
 	weight := 1
 	big := false
 	for i, c := range cnList {
