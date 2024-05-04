@@ -4,19 +4,17 @@ import (
 	"fmt"
 	"gitee.com/jn-qq/go-tools/data"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-// Type 数据类型
-type Type string
-
 // 数据集类型
 const (
-	String Type = "string"
-	Int    Type = "int"
-	Float  Type = "float"
-	Bool   Type = "bool"
+	String string = "string"
+	Int    string = "int"
+	Float  string = "float64"
+	Bool   string = "bool"
 )
 
 type Elements interface {
@@ -40,25 +38,31 @@ type Elements interface {
 	float() []float64
 	// Bool 数据集转化为布尔值切片
 	bool() []bool
+	// 数据类型
+	dType() string
 }
 
 type Element interface {
 	// Set 设置值
 	set(any)
-	// ToString 返回字符串
+	// records 返回字符串
 	records() string
-	// ToInt 返回整数
+	// Int 返回整数
 	int() int
-	// ToFloat 返回浮点数
+	// Float 返回浮点数
 	float() float64
-	// ToBool 返回布尔值
+	// Bool 返回布尔值
 	bool() bool
+	// 任一类型
+	value() any
 	// Type 返回数据类型
-	Type() Type
+	dType() string
 	// Copy 复制值
 	copy() Element
 	// 判断是否为NaN
 	isNaN() bool
+	// 更新
+	update(Element)
 }
 
 // 字符串数据格式，实现接口 Element
@@ -191,7 +195,7 @@ func (f *floatElement) records() string {
 	if f.isNaN() {
 		return "NaN"
 	}
-	return strconv.FormatFloat(float64(*f), 'f', 6, 64)
+	return strconv.FormatFloat(float64(*f), 'f', -1, 64)
 }
 func (b *boolElement) records() string {
 	if *b {
@@ -286,16 +290,16 @@ func (b *boolElement) bool() bool {
 
 //--------------------------------//
 
-func (s *stringElement) Type() Type {
+func (s *stringElement) dType() string {
 	return String
 }
-func (i *intElement) Type() Type {
+func (i *intElement) dType() string {
 	return Int
 }
-func (f *floatElement) Type() Type {
+func (f *floatElement) dType() string {
 	return Float
 }
-func (b *boolElement) Type() Type {
+func (b *boolElement) dType() string {
 	return Bool
 }
 
@@ -303,7 +307,7 @@ func (b *boolElement) Type() Type {
 
 func (s *stringElement) copy() Element {
 	s2 := new(stringElement)
-	s2 = s
+	*s2 = *s
 	return s2
 }
 func (i *intElement) copy() Element {
@@ -361,6 +365,42 @@ func (i *intElement) String() string {
 	} else {
 		return i.records()
 	}
+}
+
+//--------------------------------//
+
+func (s *stringElement) update(elem Element) {
+	s.set(elem.records())
+}
+
+func (i *intElement) update(elem Element) {
+	i.set(elem.int())
+}
+
+func (f *floatElement) update(elem Element) {
+	f.set(elem.float())
+}
+
+func (b *boolElement) update(elem Element) {
+	b.set(elem.bool())
+}
+
+//--------------------------------//
+
+func (s *stringElement) value() any {
+	return s.records()
+}
+
+func (f *floatElement) value() any {
+	return f.float()
+}
+
+func (b *boolElement) value() any {
+	return b.bool()
+}
+
+func (i *intElement) value() any {
+	return i.int()
 }
 
 ///////////////元素组 //////////////////
@@ -494,23 +534,27 @@ func (b *boolElements) insert(index int, values ...any) error {
 
 //--------------------------------//
 
-func (s *stringElements) drop(index ...int) {
-	for _, i := range index {
+func (s *stringElements) drop(indexes ...int) {
+	sort.Ints(indexes)
+	for _, i := range data.Reverse(indexes) {
 		*s, _ = data.Pop(*s, i)
 	}
 }
-func (i *intElements) drop(index ...int) {
-	for _, v := range index {
+func (i *intElements) drop(indexes ...int) {
+	sort.Ints(indexes)
+	for _, v := range data.Reverse(indexes) {
 		*i, _ = data.Pop(*i, v)
 	}
 }
-func (f *floatElements) drop(index ...int) {
-	for _, i := range index {
+func (f *floatElements) drop(indexes ...int) {
+	sort.Ints(indexes)
+	for _, i := range data.Reverse(indexes) {
 		*f, _ = data.Pop(*f, i)
 	}
 }
-func (b *boolElements) drop(index ...int) {
-	for _, i := range index {
+func (b *boolElements) drop(indexes ...int) {
+	sort.Ints(indexes)
+	for _, i := range data.Reverse(indexes) {
 		*b, _ = data.Pop(*b, i)
 	}
 }
@@ -702,4 +746,21 @@ func (b *boolElements) bool() []bool {
 		newBool = append(newBool, element.bool())
 	}
 	return newBool
+}
+
+//--------------------------------//
+
+//--------------------------------//
+
+func (s *stringElements) dType() string {
+	return String
+}
+func (i *intElements) dType() string {
+	return Int
+}
+func (f *floatElements) dType() string {
+	return Float
+}
+func (b *boolElements) dType() string {
+	return Bool
 }
