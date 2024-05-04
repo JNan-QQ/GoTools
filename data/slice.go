@@ -123,23 +123,23 @@ type Ordered interface {
 }
 
 func Max[E Ordered](array []E) E {
-	var max E
+	var e E
 	for _, v := range array {
-		if v >= max {
-			max = v
+		if v >= e {
+			e = v
 		}
 	}
-	return max
+	return e
 }
 
 func Min[T Ordered](array []T) T {
-	var min T
+	var t T
 	for _, v := range array {
-		if v <= min {
-			min = v
+		if v <= t {
+			t = v
 		}
 	}
-	return min
+	return t
 }
 
 func Avg[T Ordered](array []T) T {
@@ -148,4 +148,60 @@ func Avg[T Ordered](array []T) T {
 		sum += v
 	}
 	return sum / T(len(array))
+}
+
+// Filter 切片过滤
+func Filter[T comparable](slice []T, condition func(T) bool) ([]T, []int) {
+	var filtered []T
+	var indexes []int
+	for index, item := range slice {
+		if condition(item) {
+			filtered = append(filtered, item)
+			indexes = append(indexes, index)
+		}
+	}
+	return filtered, indexes
+}
+
+// Reverse 切片倒序
+func Reverse[T comparable](slice []T) []T {
+	reversed := make([]T, 0, len(slice))
+	for i := len(slice) - 1; i >= 0; i-- {
+		reversed = append(reversed, slice[i])
+	}
+	return reversed
+}
+
+type AnySlice []any
+
+func (s AnySlice) String() []string {
+	var list []string
+	for _, a := range s {
+		list = append(list, a.(string))
+	}
+	return list
+}
+
+func (s AnySlice) Int() []int {
+	var list []int
+	for _, a := range s {
+		list = append(list, a.(int))
+	}
+	return list
+}
+
+func (s AnySlice) Float64() []float64 {
+	var list []float64
+	for _, a := range s {
+		list = append(list, a.(float64))
+	}
+	return list
+}
+
+func (s AnySlice) Bool() []bool {
+	var list []bool
+	for _, a := range s {
+		list = append(list, a.(bool))
+	}
+	return list
 }

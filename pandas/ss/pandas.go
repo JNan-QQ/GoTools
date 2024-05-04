@@ -2,7 +2,7 @@
 	对 gota 简单扩展
 */
 
-package pandas
+package ss
 
 import (
 	"fmt"
