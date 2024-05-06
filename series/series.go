@@ -1,4 +1,4 @@
-package pandas
+package series
 
 import (
 	"fmt"
@@ -17,8 +17,8 @@ type Series struct {
 
 // NewSeries 创建数据列
 //
-//	values: 数据切片，可选nil、[]string、[]int、[]float64、[]bool
-//	dType: 数据类型，可选String、int、float64、bool
+//	values: 数据切片，可选nil、[]string、[]Int、[]float64、[]Bool
+//	dType: 数据类型，可选String、Int、float64、Bool
 //	name: 数据列名称
 func NewSeries[E int | float64 | string | bool](values []E, dType string, name string) (*Series, error) {
 	series := Series{
@@ -30,6 +30,7 @@ func NewSeries[E int | float64 | string | bool](values []E, dType string, name s
 	if values == nil {
 		return &series, nil
 	} else if reflect.TypeOf(values).String() != fmt.Sprintf("[]%s", dType) {
+		fmt.Println(reflect.TypeOf(values).String())
 		return nil, fmt.Errorf("输入切片与指定数据类型不匹配")
 	} else {
 		if err := series.elements.append(values); err != nil {
@@ -106,6 +107,10 @@ func (s *Series) SubSet(indexes ...int) *Series {
 // Elements 返回数据集元素对象切片
 func (s *Series) Elements() []Element {
 	return s.elements.elems()
+}
+
+func (s *Series) Index(i int) Element {
+	return s.elements.index(i)
 }
 
 // Format 批量处理数据集
@@ -238,7 +243,7 @@ func (s *Series) Filter(operator Operator, values any) (*Series, error) {
 
 	case Int:
 		if !data.Contains([]Operator{Equal, NotEqual, LessThan, LessOrEqual, GreaterThan, GreaterOrEqual, In, NotIn}, operator) {
-			return nil, fmt.Errorf("int 类型数据无法执行操作%s", operator)
+			return nil, fmt.Errorf("Int 类型数据无法执行操作%s", operator)
 		}
 	case Float:
 		if !data.Contains([]Operator{Equal, NotEqual, LessThan, LessOrEqual, GreaterThan, GreaterOrEqual, In, NotIn}, operator) {
@@ -246,7 +251,7 @@ func (s *Series) Filter(operator Operator, values any) (*Series, error) {
 		}
 	case Bool:
 		if !data.Contains([]Operator{Equal, NotEqual}, operator) {
-			return nil, fmt.Errorf("bool 类型数据无法执行操作%s", operator)
+			return nil, fmt.Errorf("Bool 类型数据无法执行操作%s", operator)
 		}
 	}
 
@@ -257,42 +262,42 @@ func (s *Series) Filter(operator Operator, values any) (*Series, error) {
 	_, ns.indexes = data.Filter(elements, func(element Element) bool {
 		switch operator {
 		case Equal:
-			return element.value() == values
+			return element.Value() == values
 		case NotEqual:
-			return element.value() != values
+			return element.Value() != values
 		case LessThan, LessOrEqual, GreaterThan, GreaterOrEqual:
-			if math.IsNaN(element.float()) {
+			if math.IsNaN(element.Float()) {
 				return false
 			}
 			if reflect.TypeOf(values).Kind() == reflect.Int {
 				switch operator {
 				case LessThan:
-					return element.int() < values.(int)
+					return element.Int() < values.(int)
 				case LessOrEqual:
-					return element.int() <= values.(int)
+					return element.Int() <= values.(int)
 				case GreaterThan:
-					return element.int() > values.(int)
+					return element.Int() > values.(int)
 				case GreaterOrEqual:
-					return element.int() >= values.(int)
+					return element.Int() >= values.(int)
 				}
 			} else {
 				switch operator {
 				case LessThan:
-					return element.float() < values.(float64)
+					return element.Float() < values.(float64)
 				case LessOrEqual:
-					return element.float() <= values.(float64)
+					return element.Float() <= values.(float64)
 				case GreaterThan:
-					return element.float() > values.(float64)
+					return element.Float() > values.(float64)
 				case GreaterOrEqual:
-					return element.float() >= values.(float64)
+					return element.Float() >= values.(float64)
 				}
 			}
 		case Contains:
-			return strings.Contains(element.records(), values.(string))
+			return strings.Contains(element.Records(), values.(string))
 		case StartsWith:
-			return strings.HasPrefix(element.records(), values.(string))
+			return strings.HasPrefix(element.Records(), values.(string))
 		case EndsWith:
-			return strings.HasSuffix(element.records(), values.(string))
+			return strings.HasSuffix(element.Records(), values.(string))
 		case In, NotIn:
 			var newValues []any
 			v := reflect.ValueOf(values)
@@ -300,9 +305,9 @@ func (s *Series) Filter(operator Operator, values any) (*Series, error) {
 				newValues = append(newValues, v.Index(i).Interface())
 			}
 			if operator == In {
-				return data.Contains(newValues, element.value())
+				return data.Contains(newValues, element.Value())
 			} else {
-				return !data.Contains(newValues, element.value())
+				return !data.Contains(newValues, element.Value())
 			}
 		}
 		return false
