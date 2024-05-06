@@ -1,4 +1,4 @@
-package pandas
+package series
 
 import (
 	"fmt"
@@ -41,16 +41,16 @@ func TestSeries_Concat(t *testing.T) {
 func TestSeries_Format(t *testing.T) {
 	s1, _ := NewSeries([]int{1, 2, 3, 4, 6}, Int, "number1")
 	s1.Format(func(index int, elem Element) Element {
-		e := elem.int()
-		elem.set(e + index)
+		e := elem.Int()
+		elem.Set(e + index)
 		return elem
 	})
 	fmt.Println(&s1)
 
 	s2, _ := NewSeries([]string{"1", "2", "test", "2", "4", "6"}, String, "number2")
 	s2.Format(func(index int, elem Element) Element {
-		e := elem.records()
-		elem.set(e + "ioc")
+		e := elem.Records()
+		elem.Set(e + "ioc")
 		return elem
 	})
 	fmt.Println(&s2)

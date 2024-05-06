@@ -1,15 +1,17 @@
-package pandas
+package dataFrame
 
 import (
 	"fmt"
+	"gitee.com/jn-qq/go-tools/data"
+	"gitee.com/jn-qq/go-tools/pandas/series"
 	"reflect"
-	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
 type DataFrame struct {
-	columns []Series
+	columns []series.Series
 	cols    int
 	rows    int
 }
@@ -23,26 +25,26 @@ type DataFrame struct {
 //	 当为 nil 时，创建空 DataFrame
 func NewDataFrame(values any, columnName []string) (*DataFrame, error) {
 
-	dataFrame := DataFrame{columns: make([]Series, 0), cols: 0, rows: 0}
+	dataFrame := DataFrame{columns: make([]series.Series, 0), cols: 0, rows: 0}
 
 	if values == nil {
 		return &dataFrame, nil
 	}
 
 	switch vals := values.(type) {
-	case []Series:
+	case []series.Series:
 		rows := 0
-		var series []Series
+		var _series []series.Series
 		for _, val := range vals {
 			if rows == 0 {
 				rows = val.Len()
 			} else if rows != val.Len() {
 				return nil, fmt.Errorf("输入数据长度不一致！")
 			} else {
-				series = append(series, *(val.Copy()))
+				_series = append(_series, *(val.Copy()))
 			}
 		}
-		dataFrame.columns = series
+		dataFrame.columns = _series
 	case map[string]any:
 		cols := 0
 		for key, value := range vals {
@@ -72,26 +74,26 @@ func NewDataFrame(values any, columnName []string) (*DataFrame, error) {
 				for i := 0; i < v.Len(); i++ {
 					if columns[i] == nil {
 						switch v.Type().Elem().String() {
-						case String:
+						case series.String:
 							columns[i] = []string{v.Index(i).String()}
-						case Bool:
+						case series.Bool:
 							columns[i] = []bool{v.Index(i).Bool()}
-						case Float:
+						case series.Float:
 							columns[i] = []float64{v.Index(i).Float()}
-						case Int:
+						case series.Int:
 							columns[i] = []int{int(v.Index(i).Int())}
 						default:
 							return nil, fmt.Errorf("未知数据类型%s", v.Type().Elem().String())
 						}
 					} else {
 						switch v.Type().Elem().String() {
-						case String:
+						case series.String:
 							columns[i] = append(columns[i].([]string), v.Index(i).String())
-						case Bool:
+						case series.Bool:
 							columns[i] = append(columns[i].([]bool), v.Index(i).Bool())
-						case Float:
+						case series.Float:
 							columns[i] = append(columns[i].([]float64), v.Index(i).Float())
-						case Int:
+						case series.Int:
 							columns[i] = append(columns[i].([]int), int(v.Index(i).Int()))
 						}
 					}
@@ -108,28 +110,36 @@ func NewDataFrame(values any, columnName []string) (*DataFrame, error) {
 		return nil, fmt.Errorf("不支持的数据类型！")
 	}
 
-	dataFrame.size()
+	dataFrame.Size()
 
 	return &dataFrame, nil
 }
 
-// Records 返回字符串切片，第一个切片为列名
+// Records 返回字符串切片
 //
-//	isRow = false 返回列切片
-//	isRow = true  返回行切片
-func (d *DataFrame) Records(isRow bool) [][]string {
-	var res = [][]string{d.ColumnNames()}
+//	isRow = false 返回列切片 isRow = true  返回行切片
+//	hasColName 是否返回列名，第一个元素，或切片
+func (d *DataFrame) Records(isRow bool, hasColName bool) [][]string {
+	var res [][]string
 	if isRow {
-		for i := 0; i < d.RowNum(); i++ {
+		if hasColName {
+			res = append(res, d.ColumnNames())
+		}
+		for i := 0; i < d.rows; i++ {
 			var rows []string
 			for _, column := range d.columns {
-				rows = append(rows, column.elements.index(i).records())
+				rows = append(rows, column.Index(i).Records())
 			}
 			res = append(res, rows)
 		}
 	} else {
 		for _, column := range d.columns {
-			res = append(res, column.Records())
+			values := column.Records()
+
+			if hasColName {
+				values = data.Insert(values, 0, column.Name)
+			}
+			res = append(res, values)
 		}
 	}
 
@@ -168,18 +178,18 @@ func (d *DataFrame) newSeries(values any, name string, length *int) error {
 		return fmt.Errorf("输入数据长度不一致！")
 	}
 
-	var series *Series
+	var _series *series.Series
 	var err error
 
 	switch value := values.(type) {
 	case []string:
-		series, err = NewSeries(value, String, name)
+		_series, err = series.NewSeries(value, series.String, name)
 	case []int:
-		series, err = NewSeries(value, Int, name)
+		_series, err = series.NewSeries(value, series.Int, name)
 	case []float64:
-		series, err = NewSeries(value, Float, name)
+		_series, err = series.NewSeries(value, series.Float, name)
 	case []bool:
-		series, err = NewSeries(value, Bool, name)
+		_series, err = series.NewSeries(value, series.Bool, name)
 	default:
 		return fmt.Errorf("错误的切片类型！")
 	}
@@ -188,59 +198,119 @@ func (d *DataFrame) newSeries(values any, name string, length *int) error {
 		return err
 	}
 
-	d.columns = append(d.columns, *series)
+	d.columns = append(d.columns, *_series)
 
 	return nil
 }
 
 // 自定义输出
 func (d *DataFrame) String() string {
-	var str string
+	return d.print(20, false)
+}
 
-	maxWith := make([]int, d.ColNum())
-	for i, _strings := range d.Records(false)[1:] {
-		for _, s := range append(_strings, d.ColumnNames()[i]) {
-			with := utf8.RuneCountInString(s)
-			if with > maxWith[i] {
-				maxWith[i] = with
-			}
-		}
+func (d *DataFrame) print(maxWith int, isComplete bool) (str string) {
+
+	if d.cols == 0 || d.rows == 0 {
+		return "DataFrame is Empty!"
 	}
 
-	for i, _strings := range d.Records(true) {
-		if i == 0 {
-			str += fmt.Sprintf("%-5s", "序号")
-		} else {
-			str += fmt.Sprintf("%-5d", i-1)
+	str += fmt.Sprintf("DataFrame size：%d x %d\n\n", d.cols, d.rows)
+
+	if maxWith == 0 {
+		maxWith = 20
+	}
+
+	if d.rows <= 50 {
+		isComplete = true
+	}
+
+	step := strings.Repeat(" ", 2)
+	total := 2 + (maxWith+3)*d.cols
+
+	color := [][]int{
+		{0, 0, 36},
+		{0, 0, 33},
+	}
+
+	// 按行遍历
+	for i, rows := range d.Records(true, true) {
+		// 默认简略输出
+		if !isComplete && i >= 17 && i <= d.rows-6 {
+			if i == 17 {
+				str += fmt.Sprintf("%*s%s", 4, "...", step) +
+					strings.Repeat(fmt.Sprintf("%20s%s", "...", step), d.cols) + "\n"
+			}
+			continue
 		}
-		for i2, s := range _strings {
-			str += fmt.Sprintf("%"+strconv.Itoa(maxWith[i2]+3)+"s", s)
+
+		// 添加索引列
+		if i != 0 {
+			str += fmt.Sprintf("%3d%s", i, step)
+		} else {
+			str += fmt.Sprintf("%2s%s", "序号", step)
+		}
+
+		// 遍历列字符
+		for j, chars := range rows {
+			cl := color[j%2]
+			if i == 0 {
+				cl = []int{0, 0, 30}
+			}
+			// 判断实际长度
+			if utf8.RuneCountInString(chars)+data.HanCount(chars) <= maxWith {
+				str += data.ColorStr(fmt.Sprintf("%*s%s", maxWith-data.HanCount(chars), chars, step), cl[0], cl[1], cl[2])
+			} else {
+				// 截取指定最大长度的字符串
+				n := 0
+				nChar := ""
+				for _, char := range chars {
+					if unicode.Is(unicode.Han, char) {
+						n += 2
+					} else {
+						n += 1
+					}
+					if n > maxWith-3 {
+						nChar += "...."
+						break
+					} else if n == maxWith-3 {
+						nChar += string(char) + "..."
+						break
+					} else {
+						nChar += string(char)
+					}
+				}
+				str += data.ColorStr(fmt.Sprintf("%*s%s", maxWith-data.HanCount(nChar), nChar, step), cl[0], cl[1], cl[2])
+			}
+
 		}
 		str += "\n"
 		if i == 0 {
-			str += strings.Repeat("=", utf8.RuneCountInString(str)) + "\n"
+			//total = utf8.RuneCountInString(str) + d.cols
+			str += strings.Repeat("=", total) + "\n"
 		}
 	}
+	str += strings.Repeat("-", total) + "\n"
+	str += strings.Repeat(" ", 2) + step
+	for _, s := range d.ColumnType() {
+		str += fmt.Sprintf("%*s%s", maxWith, s, step)
+	}
 
-	return str
+	return
 }
 
-// 更新二维数组大小
-func (d *DataFrame) size() {
+// Size 更新并返回二维数组大小
+func (d *DataFrame) Size() (cols, rows int) {
 	d.cols = len(d.columns)
 	if d.cols > 0 {
 		d.rows = d.columns[0].Len()
 	} else {
 		d.rows = 0
 	}
+	return d.cols, d.rows
 }
 
-// RowNum 行数
-func (d *DataFrame) RowNum() int {
-	return d.rows
-}
-
-// ColNum 列数
-func (d *DataFrame) ColNum() int {
-	return d.cols
+// Copy 复制
+func (d *DataFrame) Copy() *DataFrame {
+	_copy, _ := NewDataFrame(d.columns, nil)
+	return _copy
 }

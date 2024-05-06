@@ -1,4 +1,4 @@
-package pandas
+package series
 
 import (
 	"fmt"
@@ -44,17 +44,17 @@ type Elements interface {
 
 type Element interface {
 	// Set 设置值
-	set(any)
-	// records 返回字符串
-	records() string
+	Set(any)
+	// Records 返回字符串
+	Records() string
 	// Int 返回整数
-	int() int
+	Int() int
 	// Float 返回浮点数
-	float() float64
+	Float() float64
 	// Bool 返回布尔值
-	bool() bool
-	// 任一类型
-	value() any
+	Bool() bool
+	// Value 任一类型
+	Value() any
 	// Type 返回数据类型
 	dType() string
 	// Copy 复制值
@@ -93,7 +93,7 @@ type boolElements []boolElement
 //            元素                  //
 /////////////////////////////////////
 
-func (s *stringElement) set(value any) {
+func (s *stringElement) Set(value any) {
 	switch val := value.(type) {
 	case string:
 		if data.Contains([]string{"", "NaN", "nan", "null", "Null"}, val) {
@@ -115,7 +115,7 @@ func (s *stringElement) set(value any) {
 		*s = "NaN"
 	}
 }
-func (i *intElement) set(value any) {
+func (i *intElement) Set(value any) {
 	switch val := value.(type) {
 	case string:
 		if newInt, err := strconv.Atoi(val); err == nil {
@@ -137,7 +137,7 @@ func (i *intElement) set(value any) {
 		*i = math.MinInt
 	}
 }
-func (f *floatElement) set(value any) {
+func (f *floatElement) Set(value any) {
 	switch val := value.(type) {
 	case string:
 		if newFloat, err := strconv.ParseFloat(val, 10); err != nil {
@@ -159,7 +159,7 @@ func (f *floatElement) set(value any) {
 		*f = floatElement(math.NaN())
 	}
 }
-func (b *boolElement) set(value any) {
+func (b *boolElement) Set(value any) {
 	switch val := value.(type) {
 	case string:
 		if data.Contains([]string{"false", "0", "F", "f"}, val) {
@@ -182,22 +182,22 @@ func (b *boolElement) set(value any) {
 
 //--------------------------------//
 
-func (s *stringElement) records() string {
+func (s *stringElement) Records() string {
 	return string(*s)
 }
-func (i *intElement) records() string {
+func (i *intElement) Records() string {
 	if i.isNaN() {
 		return "NaN"
 	}
 	return strconv.Itoa(int(*i))
 }
-func (f *floatElement) records() string {
+func (f *floatElement) Records() string {
 	if f.isNaN() {
 		return "NaN"
 	}
 	return strconv.FormatFloat(float64(*f), 'f', -1, 64)
 }
-func (b *boolElement) records() string {
+func (b *boolElement) Records() string {
 	if *b {
 		return "true"
 	} else {
@@ -207,24 +207,24 @@ func (b *boolElement) records() string {
 
 //--------------------------------//
 
-func (s *stringElement) int() int {
+func (s *stringElement) Int() int {
 	if s.isNaN() {
 		return math.MinInt
 	}
 	if i, err := strconv.Atoi(string(*s)); err != nil {
-		fmt.Printf("%s 不能转换为 int，已置为无限小\n", string(*s))
+		fmt.Printf("%s 不能转换为 Int，已置为无限小\n", string(*s))
 		return math.MinInt
 	} else {
 		return i
 	}
 }
-func (i *intElement) int() int {
+func (i *intElement) Int() int {
 	return int(*i)
 }
-func (f *floatElement) int() int {
+func (f *floatElement) Int() int {
 	return int(*f)
 }
-func (b *boolElement) int() int {
+func (b *boolElement) Int() int {
 	if *b {
 		return 1
 	} else {
@@ -234,7 +234,7 @@ func (b *boolElement) int() int {
 
 //--------------------------------//
 
-func (s *stringElement) float() float64 {
+func (s *stringElement) Float() float64 {
 	if s.isNaN() {
 		return math.NaN()
 	}
@@ -244,16 +244,16 @@ func (s *stringElement) float() float64 {
 		return f
 	}
 }
-func (i *intElement) float() float64 {
+func (i *intElement) Float() float64 {
 	if *i == math.MinInt {
 		return math.NaN()
 	}
 	return float64(*i)
 }
-func (f *floatElement) float() float64 {
+func (f *floatElement) Float() float64 {
 	return float64(*f)
 }
-func (b *boolElement) float() float64 {
+func (b *boolElement) Float() float64 {
 	if *b {
 		return 1
 	} else {
@@ -263,28 +263,28 @@ func (b *boolElement) float() float64 {
 
 //--------------------------------//
 
-func (s *stringElement) bool() bool {
+func (s *stringElement) Bool() bool {
 	if data.Contains([]string{"false", "0", "F", "f"}, strings.ToLower(string(*s))) {
 		return false
 	} else {
 		return true
 	}
 }
-func (i *intElement) bool() bool {
+func (i *intElement) Bool() bool {
 	if *i > 0 {
 		return true
 	} else {
 		return false
 	}
 }
-func (f *floatElement) bool() bool {
+func (f *floatElement) Bool() bool {
 	if *f > 0 && !math.IsNaN(float64(*f)) {
 		return true
 	} else {
 		return false
 	}
 }
-func (b *boolElement) bool() bool {
+func (b *boolElement) Bool() bool {
 	return bool(*b)
 }
 
@@ -356,51 +356,51 @@ func (s *stringElement) String() string {
 	if s.isNaN() {
 		return "NaN"
 	} else {
-		return s.records()
+		return s.Records()
 	}
 }
 func (i *intElement) String() string {
 	if *i == math.MinInt {
 		return "NaN"
 	} else {
-		return i.records()
+		return i.Records()
 	}
 }
 
 //--------------------------------//
 
 func (s *stringElement) update(elem Element) {
-	s.set(elem.records())
+	s.Set(elem.Records())
 }
 
 func (i *intElement) update(elem Element) {
-	i.set(elem.int())
+	i.Set(elem.Int())
 }
 
 func (f *floatElement) update(elem Element) {
-	f.set(elem.float())
+	f.Set(elem.Float())
 }
 
 func (b *boolElement) update(elem Element) {
-	b.set(elem.bool())
+	b.Set(elem.Bool())
 }
 
 //--------------------------------//
 
-func (s *stringElement) value() any {
-	return s.records()
+func (s *stringElement) Value() any {
+	return s.Records()
 }
 
-func (f *floatElement) value() any {
-	return f.float()
+func (f *floatElement) Value() any {
+	return f.Float()
 }
 
-func (b *boolElement) value() any {
-	return b.bool()
+func (b *boolElement) Value() any {
+	return b.Bool()
 }
 
-func (i *intElement) value() any {
-	return i.int()
+func (i *intElement) Value() any {
+	return i.Int()
 }
 
 ///////////////元素组 //////////////////
@@ -409,12 +409,12 @@ func (s *stringElements) append(values any) error {
 	switch value := values.(type) {
 	case string:
 		sm := new(stringElement)
-		sm.set(value)
+		sm.Set(value)
 		*s = append(*s, *sm)
 	case []string:
 		for _, v := range value {
 			sm := new(stringElement)
-			sm.set(v)
+			sm.Set(v)
 			*s = append(*s, *sm)
 		}
 	default:
@@ -427,12 +427,12 @@ func (i *intElements) append(values any) error {
 	switch value := values.(type) {
 	case int:
 		im := new(intElement)
-		im.set(value)
+		im.Set(value)
 		*i = append(*i, *im)
 	case []int:
 		for _, v := range value {
 			im := new(intElement)
-			im.set(v)
+			im.Set(v)
 			*i = append(*i, *im)
 		}
 	default:
@@ -444,12 +444,12 @@ func (f *floatElements) append(values any) error {
 	switch value := values.(type) {
 	case float64:
 		fm := new(floatElement)
-		fm.set(value)
+		fm.Set(value)
 		*f = append(*f, *fm)
 	case []float64:
 		for _, v := range value {
 			fm := new(floatElement)
-			fm.set(v)
+			fm.Set(v)
 			*f = append(*f, *fm)
 		}
 	default:
@@ -461,12 +461,12 @@ func (b *boolElements) append(values any) error {
 	switch value := values.(type) {
 	case bool:
 		bm := new(boolElement)
-		bm.set(value)
+		bm.Set(value)
 		*b = append(*b, *bm)
 	case []bool:
 		for _, v := range value {
 			bm := new(boolElement)
-			bm.set(v)
+			bm.Set(v)
 			*b = append(*b, *bm)
 		}
 	default:
@@ -483,7 +483,7 @@ func (s *stringElements) insert(index int, values ...any) error {
 		switch v := value.(type) {
 		case string, int, float64, bool:
 			sm := new(stringElement)
-			sm.set(v)
+			sm.Set(v)
 			*s = data.Insert(*s, index+i, *sm)
 		default:
 			return fmt.Errorf("请确认输入的是字符串")
@@ -496,7 +496,7 @@ func (i *intElements) insert(index int, values ...any) error {
 		switch v := value.(type) {
 		case string, int, float64, bool:
 			im := new(intElement)
-			im.set(v)
+			im.Set(v)
 			*i = data.Insert(*i, index+i2, *im)
 		default:
 			return fmt.Errorf("请确认输入的是整数")
@@ -509,7 +509,7 @@ func (f *floatElements) insert(index int, values ...any) error {
 		switch v := value.(type) {
 		case string, int, float64, bool:
 			fm := new(floatElement)
-			fm.set(v)
+			fm.Set(v)
 			*f = data.Insert(*f, index+i, *fm)
 		default:
 			return fmt.Errorf("请确认输入的是浮点数")
@@ -523,7 +523,7 @@ func (b *boolElements) insert(index int, values ...any) error {
 		switch v := value.(type) {
 		case string, int, float64, bool:
 			bm := new(boolElement)
-			bm.set(v)
+			bm.Set(v)
 			*b = data.Insert(*b, index+i, *bm)
 		default:
 			return fmt.Errorf("请确认输入的是布尔值")
@@ -629,28 +629,28 @@ func (b *boolElements) len() int {
 func (s *stringElements) records() []string {
 	newStr := make([]string, 0)
 	for _, element := range *s {
-		newStr = append(newStr, element.records())
+		newStr = append(newStr, element.Records())
 	}
 	return newStr
 }
 func (i *intElements) records() []string {
 	newStr := make([]string, 0)
 	for _, element := range *i {
-		newStr = append(newStr, element.records())
+		newStr = append(newStr, element.Records())
 	}
 	return newStr
 }
 func (f *floatElements) records() []string {
 	newStr := make([]string, 0)
 	for _, element := range *f {
-		newStr = append(newStr, element.records())
+		newStr = append(newStr, element.Records())
 	}
 	return newStr
 }
 func (b *boolElements) records() []string {
 	newStr := make([]string, 0)
 	for _, element := range *b {
-		newStr = append(newStr, element.records())
+		newStr = append(newStr, element.Records())
 	}
 	return newStr
 }
@@ -660,28 +660,28 @@ func (b *boolElements) records() []string {
 func (s *stringElements) int() []int {
 	newInt := make([]int, 0)
 	for _, element := range *s {
-		newInt = append(newInt, element.int())
+		newInt = append(newInt, element.Int())
 	}
 	return newInt
 }
 func (i *intElements) int() []int {
 	newInt := make([]int, 0)
 	for _, element := range *i {
-		newInt = append(newInt, element.int())
+		newInt = append(newInt, element.Int())
 	}
 	return newInt
 }
 func (f *floatElements) int() []int {
 	newInt := make([]int, 0)
 	for _, element := range *f {
-		newInt = append(newInt, element.int())
+		newInt = append(newInt, element.Int())
 	}
 	return newInt
 }
 func (b *boolElements) int() []int {
 	newInt := make([]int, 0)
 	for _, element := range *b {
-		newInt = append(newInt, element.int())
+		newInt = append(newInt, element.Int())
 	}
 	return newInt
 }
@@ -691,28 +691,28 @@ func (b *boolElements) int() []int {
 func (s *stringElements) float() []float64 {
 	newFloat := make([]float64, 0)
 	for _, element := range *s {
-		newFloat = append(newFloat, element.float())
+		newFloat = append(newFloat, element.Float())
 	}
 	return newFloat
 }
 func (i *intElements) float() []float64 {
 	newFloat := make([]float64, 0)
 	for _, element := range *i {
-		newFloat = append(newFloat, element.float())
+		newFloat = append(newFloat, element.Float())
 	}
 	return newFloat
 }
 func (f *floatElements) float() []float64 {
 	newFloat := make([]float64, 0)
 	for _, element := range *f {
-		newFloat = append(newFloat, element.float())
+		newFloat = append(newFloat, element.Float())
 	}
 	return newFloat
 }
 func (b *boolElements) float() []float64 {
 	newFloat := make([]float64, 0)
 	for _, element := range *b {
-		newFloat = append(newFloat, element.float())
+		newFloat = append(newFloat, element.Float())
 	}
 	return newFloat
 }
@@ -722,28 +722,28 @@ func (b *boolElements) float() []float64 {
 func (s *stringElements) bool() []bool {
 	newBool := make([]bool, 0)
 	for _, element := range *s {
-		newBool = append(newBool, element.bool())
+		newBool = append(newBool, element.Bool())
 	}
 	return newBool
 }
 func (i *intElements) bool() []bool {
 	newBool := make([]bool, 0)
 	for _, element := range *i {
-		newBool = append(newBool, element.bool())
+		newBool = append(newBool, element.Bool())
 	}
 	return newBool
 }
 func (f *floatElements) bool() []bool {
 	newBool := make([]bool, 0)
 	for _, element := range *f {
-		newBool = append(newBool, element.bool())
+		newBool = append(newBool, element.Bool())
 	}
 	return newBool
 }
 func (b *boolElements) bool() []bool {
 	newBool := make([]bool, 0)
 	for _, element := range *b {
-		newBool = append(newBool, element.bool())
+		newBool = append(newBool, element.Bool())
 	}
 	return newBool
 }
