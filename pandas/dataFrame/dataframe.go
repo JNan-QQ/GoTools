@@ -224,7 +224,7 @@ func (d *DataFrame) print(maxWith int, isComplete bool) (str string) {
 		isComplete = true
 	}
 
-	step := strings.Repeat(" ", 2)
+	step := strings.Repeat("|", 2)
 	total := 2 + (maxWith+3)*d.cols
 
 	color := [][]int{
@@ -285,12 +285,11 @@ func (d *DataFrame) print(maxWith int, isComplete bool) (str string) {
 		}
 		str += "\n"
 		if i == 0 {
-			//total = utf8.RuneCountInString(str) + d.cols
 			str += strings.Repeat("=", total) + "\n"
 		}
 	}
 	str += strings.Repeat("-", total) + "\n"
-	str += strings.Repeat(" ", 2) + step
+	str += strings.Repeat(" ", 3) + step
 	for _, s := range d.ColumnType() {
 		str += fmt.Sprintf("%*s%s", maxWith, s, step)
 	}

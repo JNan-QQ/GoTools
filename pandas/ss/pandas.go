@@ -2,7 +2,7 @@
 	对 gota 简单扩展
 */
 
-package ss
+package main
 
 import (
 	"fmt"
