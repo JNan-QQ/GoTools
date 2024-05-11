@@ -16,46 +16,6 @@ func ExampleAAA2Int() {
 	// Output:703
 }
 
-func ExampleContains() {
-	fmt.Println(Contains([]string{"a", "B", "c"}, "a"))
-	fmt.Println(Contains([]string{"a", "B", "c"}, "b"))
-	// Output:true
-	//false
-}
-
-func ExampleIndexS() {
-	fmt.Println(IndexS([]string{"a", "B", "c"}, "a"))
-	fmt.Println(IndexS([]string{"a", "B", "c"}, "b"))
-	// Output:0
-	//-1
-}
-
-func ExampleInsert() {
-	a := []int{1, 2, 3, 4, 5}
-	a = Insert(a, 2, 7, 8, 9)
-	fmt.Println(a)
-	// Output:[1 2 7 8 9 3 4 5]
-}
-
-func ExamplePop() {
-	a := []int{1, 2, 3, 4, 5}
-	a, b := Pop(a, -3)
-	fmt.Println(a, b)
-	// Output:[1 2 4 5] 3
-}
-
-func ExampleEqual() {
-
-	s, i := Equal([]string{"1"}, []string{"1"})
-	fmt.Println(s, i)
-
-	s, i = Equal([]int{1}, []int{2})
-	fmt.Println(s, i)
-
-	// Output:true -2
-	//false 0
-}
-
 func ExampleCn2an() {
 	n, _ := Cn2an("二十一")
 	fmt.Println(n)

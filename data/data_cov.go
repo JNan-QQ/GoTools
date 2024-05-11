@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -94,7 +95,7 @@ func Cn2an(cn string) (int, error) {
 	var cnList []string
 
 	for _, b := range cn {
-		cnList = Insert(cnList, 0, string(b))
+		slices.Insert(cnList, 0, string(b))
 	}
 
 	if _, ok := unitCn2an[cnList[len(cnList)-1]]; ok {

@@ -159,7 +159,7 @@ func (s *Session) Do(method, url string, params, _data, _json any) (*Response, e
 	}
 
 	// 设置请求头
-	s.header["Content-Type"] = cType
+	s.header["Content-Types"] = cType
 	for key, value := range s.header {
 		request.Header.Set(key, value)
 	}
