@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"gitee.com/jn-qq/go-tools/data"
 	"gitee.com/jn-qq/go-tools/pandas/series"
+	"github.com/apcera/termtables"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 )
 
 type DataFrame struct {
@@ -16,128 +17,137 @@ type DataFrame struct {
 	rows    int
 }
 
-// NewDataFrame 创建 DataFrame 数据对象
+// New 创建 DataFrame 数据对象
 //
-//	values: 待输入数据，可以为 map[string][]T、[][]T、nil、 []Series
-//	 当为 map[string][]T 时，以列切片方式添加
-//	 当为 [][]T 时，以行切片方式添加，第一个元素是列名切片。如果 columnName != nil ,以列切片添加
-//	 当为 []Series 时，直接添加
-//	 当为 nil 时，创建空 DataFrame
-func NewDataFrame(values any, columnName []string) (*DataFrame, error) {
+//	columns: 待输入数据，可以为 []series.Series 、[]T T = []int / []float64 / []string / []bool
+//	colsName: 列名，当 columns 为 series.Series 可为nil
+func New[S interface{ ~[]any }](columns S, colsName []string) (*DataFrame, error) {
+	df := &DataFrame{columns: make([]series.Series, 0), cols: 0, rows: 0}
 
-	dataFrame := DataFrame{columns: make([]series.Series, 0), cols: 0, rows: 0}
-
-	if values == nil {
-		return &dataFrame, nil
+	if columns == nil {
+		return df, nil
+	} else if !equalLength(columns, 0) {
+		return df, fmt.Errorf("columns must equal length")
 	}
 
-	switch vals := values.(type) {
-	case []series.Series:
-		rows := 0
-		var _series []series.Series
-		for _, val := range vals {
-			if rows == 0 {
-				rows = val.Len()
-			} else if rows != val.Len() {
-				return nil, fmt.Errorf("输入数据长度不一致！")
+	for i, column := range columns {
+		var ns *series.Series
+		var err error
+		switch value := column.(type) {
+		case *series.Series:
+			ns = value.Copy()
+		case []bool:
+			ns, err = series.NewSeries(value, series.Bool, colsName[i])
+		case []float64:
+			ns, err = series.NewSeries(value, series.Float, colsName[i])
+		case []string:
+			ns, err = series.NewSeries(value, series.String, colsName[i])
+		case []int:
+			ns, err = series.NewSeries(value, series.Int, colsName[i])
+		}
+		if err != nil {
+			return nil, err
+		}
+		df.columns = append(df.columns, *ns)
+	}
+
+	df.Size()
+
+	return df, nil
+}
+
+// LoadRecord 用二维字符串切片创建 DataFrame 数据对象
+//
+//	rows: 待输入数据
+//	colsName：每列名称，当为 nil 时，rows[0]作为每列名称
+//	colsType：每列数据类型
+func LoadRecord(rows [][]string, colsName []string, colsType []series.Type) (*DataFrame, error) {
+	// 1.检查输入数据
+	if rows == nil {
+		return nil, fmt.Errorf("输入数据不能为空")
+	} else if !equalLength(rows, 0) {
+		return nil, fmt.Errorf("各子切片数据个数不同")
+	} else if len(rows) != len(colsType) {
+		return nil, fmt.Errorf("数据列数与类型列数不相等")
+	}
+	// 判断 数据列数是否与类型、名称对应
+	maxCol := len(colsType)
+	if colsName != nil && maxCol != len(colsName) {
+		return nil, fmt.Errorf("数据列数与名称列数不相等")
+	}
+	if colsName == nil {
+		colsName = rows[0]
+		rows = rows[1:]
+	}
+	maxRow := len(rows)
+
+	// 2.创建 二维表
+	df := &DataFrame{
+		columns: make([]series.Series, 0),
+		cols:    maxCol,
+		rows:    maxRow,
+	}
+	// 遍历每一行统计列数据
+	values := make([][]string, maxCol)
+	for i := 0; i < maxRow; i++ {
+		for j := 0; j < maxCol; j++ {
+			if values[j] == nil {
+				values[j] = []string{rows[i][j]}
 			} else {
-				_series = append(_series, *(val.Copy()))
+				values[j] = append(values[j], rows[i][j])
 			}
 		}
-		dataFrame.columns = _series
-	case map[string]any:
-		cols := 0
-		for key, value := range vals {
-			if err := dataFrame.newSeries(value, key, &cols); err != nil {
-				return nil, err
-			}
-		}
-	case []any:
-		if columnName != nil {
-			if len(columnName) != len(vals) {
-				return nil, fmt.Errorf("列名个数不对应！")
-			}
-			rows := 0
-			for i, value := range vals {
-				if err := dataFrame.newSeries(value, columnName[i], &rows); err != nil {
-					return nil, err
-				}
-			}
-		} else {
-			columnsName := vals[0].([]string)
-			columns := make([]any, len(columnName))
-			for _, value := range vals[1:] {
-				v := reflect.ValueOf(value)
-				if v.Len() != len(columnsName) {
-					return nil, fmt.Errorf("切片长度不一致")
-				}
-				for i := 0; i < v.Len(); i++ {
-					if columns[i] == nil {
-						switch v.Type().Elem().String() {
-						case series.String:
-							columns[i] = []string{v.Index(i).String()}
-						case series.Bool:
-							columns[i] = []bool{v.Index(i).Bool()}
-						case series.Float:
-							columns[i] = []float64{v.Index(i).Float()}
-						case series.Int:
-							columns[i] = []int{int(v.Index(i).Int())}
-						default:
-							return nil, fmt.Errorf("未知数据类型%s", v.Type().Elem().String())
-						}
-					} else {
-						switch v.Type().Elem().String() {
-						case series.String:
-							columns[i] = append(columns[i].([]string), v.Index(i).String())
-						case series.Bool:
-							columns[i] = append(columns[i].([]bool), v.Index(i).Bool())
-						case series.Float:
-							columns[i] = append(columns[i].([]float64), v.Index(i).Float())
-						case series.Int:
-							columns[i] = append(columns[i].([]int), int(v.Index(i).Int()))
-						}
-					}
-				}
-				n := 0
-				for i, column := range columns {
-					if err := dataFrame.newSeries(column, columnsName[i], &n); err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
-	default:
-		return nil, fmt.Errorf("不支持的数据类型！")
 	}
+	// 生成 series.Series 对象
+	for i, value := range values {
+		df.columns = append(df.columns, *series.LoadRecords(value, colsType[i], colsName[i]))
+	}
+	return df, nil
+}
 
-	dataFrame.Size()
+func LoadMap(values map[string]any) (*DataFrame, error) {
+	if values == nil {
+		return nil, fmt.Errorf("请输入数据")
+	} else if !equalLength(values, 0) {
+		return nil, fmt.Errorf("各列数据不相等")
+	}
+	var colsName []string
+	var columns []any
+	for key, value := range values {
+		colsName = append(colsName, key)
+		columns = append(columns, value)
+	}
+	df, err := New(columns, colsName)
+	if err != nil {
+		return nil, err
+	}
+	return df, nil
 
-	return &dataFrame, nil
 }
 
 // Records 返回字符串切片
 //
 //	isRow = false 返回列切片 isRow = true  返回行切片
 //	hasColName 是否返回列名，第一个元素，或切片
-func (d *DataFrame) Records(isRow bool, hasColName bool) [][]string {
+func (df *DataFrame) Records(isRow bool, hasColName bool) [][]string {
 	var res [][]string
 	if isRow {
 		if hasColName {
-			res = append(res, d.ColumnNames())
+			res = append(res, df.Names())
 		}
-		for i := 0; i < d.rows; i++ {
+		for i := 0; i < df.rows; i++ {
 			var rows []string
-			for _, column := range d.columns {
-				rows = append(rows, column.Index(i).Records())
+			for _, column := range df.columns {
+				rows = append(rows, column.Element(i).Records())
 			}
 			res = append(res, rows)
 		}
 	} else {
-		for _, column := range d.columns {
+		for _, column := range df.columns {
 			values := column.Records()
 
 			if hasColName {
-				values = data.Insert(values, 0, column.Name)
+				values = slices.Insert(values, 0, column.Name)
 			}
 			res = append(res, values)
 		}
@@ -146,170 +156,384 @@ func (d *DataFrame) Records(isRow bool, hasColName bool) [][]string {
 	return res
 }
 
-// ColumnNames 返回列名
-func (d *DataFrame) ColumnNames() []string {
+// Names 返回列名
+func (df *DataFrame) Names() []string {
 	var names []string
-	for _, column := range d.columns {
+	for _, column := range df.columns {
 		names = append(names, column.Name)
 	}
 	return names
 }
 
-// ColumnType 返回列类型
-func (d *DataFrame) ColumnType() []string {
+// Types 返回列类型
+func (df *DataFrame) Types() []string {
 	var _types []string
-	for _, column := range d.columns {
+	for _, column := range df.columns {
 		_types = append(_types, column.Type())
 	}
 	return _types
 }
 
-// 创建 Series 对象
-func (d *DataFrame) newSeries(values any, name string, length *int) error {
-
-	if reflect.TypeOf(values).Kind() != reflect.Slice {
-		return fmt.Errorf("输入数据 map[string][]T 或 [][]T 类型")
-	}
-
-	if *length == 0 {
-		*length = reflect.ValueOf(values).Len()
-	}
-	if *length != reflect.ValueOf(values).Len() {
-		return fmt.Errorf("输入数据长度不一致！")
-	}
-
-	var _series *series.Series
-	var err error
-
-	switch value := values.(type) {
-	case []string:
-		_series, err = series.NewSeries(value, series.String, name)
-	case []int:
-		_series, err = series.NewSeries(value, series.Int, name)
-	case []float64:
-		_series, err = series.NewSeries(value, series.Float, name)
-	case []bool:
-		_series, err = series.NewSeries(value, series.Bool, name)
-	default:
-		return fmt.Errorf("错误的切片类型！")
-	}
-
-	if err != nil {
-		return err
-	}
-
-	d.columns = append(d.columns, *_series)
-
-	return nil
-}
-
 // 自定义输出
-func (d *DataFrame) String() string {
-	return d.print(20, false)
+func (df *DataFrame) String() string {
+	return df.print(false)
 }
 
-func (d *DataFrame) print(maxWith int, isComplete bool) (str string) {
+func (df *DataFrame) print(isComplete bool) (str string) {
 
-	if d.cols == 0 || d.rows == 0 {
-		return "DataFrame is Empty!"
+	// 创建表格对象
+	table := termtables.CreateTable()
+	// 添加标题
+	if df.cols == 0 || df.rows == 0 {
+		table.AddTitle("DataFrame Is Empty")
+	} else {
+		table.AddTitle(fmt.Sprintf("DataFrame Size：%d x %d", df.cols, df.rows))
 	}
-
-	str += fmt.Sprintf("DataFrame size：%d x %d\n\n", d.cols, d.rows)
-
-	if maxWith == 0 {
-		maxWith = 20
+	// 添加表头
+	colsName := slices.Insert(df.Names(), 0, "Index")
+	colsType := slices.Insert(df.Types(), 0, "Types")
+	var headers, dTypes []any
+	for i := 0; i < df.cols+1; i++ {
+		headers = append(headers, colsName[i])
+		dTypes = append(dTypes, colsType[i])
 	}
+	table.AddHeaders(headers...)
 
-	if d.rows <= 50 {
-		isComplete = true
-	}
-
-	step := strings.Repeat("|", 2)
-	total := 2 + (maxWith+3)*d.cols
-
-	color := [][]int{
-		{0, 0, 36},
-		{0, 0, 33},
-	}
-
-	// 按行遍历
-	for i, rows := range d.Records(true, true) {
-		// 默认简略输出
-		if !isComplete && i >= 17 && i <= d.rows-6 {
-			if i == 17 {
-				str += fmt.Sprintf("%*s%s", 4, "...", step) +
-					strings.Repeat(fmt.Sprintf("%20s%s", "...", step), d.cols) + "\n"
+	// 添加表内容
+	for i, rows := range df.Records(true, false) {
+		if !isComplete && df.rows > 50 {
+			if i == 15 {
+				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
+				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
+				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
+			} else if i > 15 && i < df.rows-6 {
+				continue
 			}
-			continue
 		}
-
-		// 添加索引列
-		if i != 0 {
-			str += fmt.Sprintf("%3d%s", i, step)
-		} else {
-			str += fmt.Sprintf("%2s%s", "序号", step)
-		}
-
-		// 遍历列字符
-		for j, chars := range rows {
-			cl := color[j%2]
-			if i == 0 {
-				cl = []int{0, 0, 30}
-			}
-			// 判断实际长度
-			if utf8.RuneCountInString(chars)+data.HanCount(chars) <= maxWith {
-				str += data.ColorStr(fmt.Sprintf("%*s%s", maxWith-data.HanCount(chars), chars, step), cl[0], cl[1], cl[2])
-			} else {
-				// 截取指定最大长度的字符串
-				n := 0
-				nChar := ""
-				for _, char := range chars {
-					if unicode.Is(unicode.Han, char) {
-						n += 2
-					} else {
-						n += 1
-					}
-					if n > maxWith-3 {
-						nChar += "...."
-						break
-					} else if n == maxWith-3 {
-						nChar += string(char) + "..."
-						break
-					} else {
-						nChar += string(char)
-					}
-				}
-				str += data.ColorStr(fmt.Sprintf("%*s%s", maxWith-data.HanCount(nChar), nChar, step), cl[0], cl[1], cl[2])
-			}
-
-		}
-		str += "\n"
-		if i == 0 {
-			str += strings.Repeat("=", total) + "\n"
-		}
-	}
-	str += strings.Repeat("-", total) + "\n"
-	str += strings.Repeat(" ", 3) + step
-	for _, s := range d.ColumnType() {
-		str += fmt.Sprintf("%*s%s", maxWith, s, step)
+		table.AddRow(data.SliceToAny(append([]string{strconv.Itoa(i + 1)}, rows...))...)
 	}
 
-	return
+	// 添加表脚
+	table.AddSeparator()
+	table.AddRow(dTypes...)
+
+	return table.Render()
 }
 
 // Size 更新并返回二维数组大小
-func (d *DataFrame) Size() (cols, rows int) {
-	d.cols = len(d.columns)
-	if d.cols > 0 {
-		d.rows = d.columns[0].Len()
+func (df *DataFrame) Size() (cols, rows int) {
+	df.cols = len(df.columns)
+	if df.cols > 0 {
+		df.rows = df.columns[0].Len()
 	} else {
-		d.rows = 0
+		df.rows = 0
 	}
-	return d.cols, d.rows
+	return df.cols, df.rows
+}
+
+func (df *DataFrame) NCols() int {
+	return df.cols
+}
+
+func (df *DataFrame) NRows() int {
+	return df.rows
+}
+
+// Columns 返回列
+func (df *DataFrame) Columns(name string) series.Series {
+	indexCol := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == name })
+	if indexCol == -1 {
+		return series.Series{}
+	} else {
+		return df.columns[indexCol]
+	}
+}
+
+// Rows 返回行
+func (df *DataFrame) Rows(r int) map[string]series.Element {
+	if r >= df.rows {
+		return nil
+	}
+	var rows = make(map[string]series.Element)
+	for _, column := range df.columns {
+		rows[column.Name] = column.Element(r)
+	}
+	return rows
+}
+
+// Cell 返回指定单元格元素
+func (df *DataFrame) Cell(r int, name string) series.Element {
+	s := df.Columns(name)
+	return s.Element(r)
 }
 
 // Copy 复制
-func (d *DataFrame) Copy() *DataFrame {
-	_copy, _ := NewDataFrame(d.columns, nil)
-	return _copy
+func (df *DataFrame) Copy() *DataFrame {
+	frame := DataFrame{
+		columns: slices.Clone(df.columns),
+	}
+	frame.Size()
+	return &frame
+}
+
+// Set 设置  index 行的值
+//
+//	values：可选[]any、map[string]any ,[]any要更改行的所有元素
+//	index < DataFrame.rows 更新行，index >= DataFrame.rows 添加行
+func (df *DataFrame) Set(index int, values any) error {
+	switch value := values.(type) {
+	case []any:
+		if len(value) != df.cols {
+			return fmt.Errorf("length of columns must equal %d", df.cols)
+		}
+		for i, v := range value {
+			if index >= df.rows {
+				if err := df.columns[i].Append(v); err != nil {
+					return err
+				}
+			} else {
+				df.columns[i].Element(index).Set(v)
+			}
+		}
+	case map[string]any:
+		for k, v := range value {
+			i := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == k })
+			if i == -1 {
+				return fmt.Errorf("column %s not found", k)
+			}
+			if index >= df.rows {
+				if err := df.columns[i].Append(v); err != nil {
+					return err
+				}
+			} else {
+				df.columns[i].Element(index).Set(v)
+			}
+		}
+	default:
+		return fmt.Errorf("type %T not supported", value)
+	}
+	df.Size()
+	return nil
+}
+
+// AddRows 向列表末尾添加行
+func (df *DataFrame) AddRows(values [][]any) error {
+	if !equalLength(values, df.cols) {
+		return fmt.Errorf("length of columns must equal %d", df.cols)
+	}
+	for _, value := range values {
+		if err := df.Set(df.rows, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AddCol 添加列
+//
+//	name：列名。如果已存在更新，否则添加
+//	values：可选 series.Series []E {int | float64 | bool | string}
+//	defaultValue：当 values 长度不足时，自动添加
+func (df *DataFrame) AddCol(name string, values any, defaultValue any) error {
+	var ns *series.Series
+	switch value := values.(type) {
+	case *series.Series:
+		// 补长度
+		if value.Len() < df.rows {
+			if defaultValue == nil {
+				return fmt.Errorf("length of default series must equal %d", df.rows)
+			}
+			if err := value.Append(data.CreateSlice(defaultValue, df.rows-value.Len())); err != nil {
+				return err
+			}
+		} else if value.Len() > df.rows {
+			value, _ = value.SubSet(data.Range(0, df.rows, 1)...)
+		}
+		ns = value.Copy()
+	case []int:
+		if len(value) < df.rows {
+			value = append(value, data.CreateSlice(defaultValue.(int), df.rows-len(value))...)
+		}
+		ns, _ = series.NewSeries(value, series.Int, name)
+	case []string:
+		if len(value) < df.rows {
+			value = append(value, data.CreateSlice(defaultValue.(string), df.rows-len(value))...)
+		}
+		ns, _ = series.NewSeries(value, series.String, name)
+	case []float64:
+		if len(value) < df.rows {
+			value = append(value, data.CreateSlice(defaultValue.(float64), df.rows-len(value))...)
+		}
+		ns, _ = series.NewSeries(value, series.Float, name)
+	case []bool:
+		if len(value) < df.rows {
+			value = append(value, data.CreateSlice(defaultValue.(bool), df.rows-len(value))...)
+		}
+		ns, _ = series.NewSeries(value[:df.rows], series.Bool, name)
+	default:
+		return fmt.Errorf("type %T not supported", value)
+	}
+
+	// 更新或添加
+	indexCol := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == ns.Name })
+	if indexCol == -1 {
+		df.columns = append(df.columns, *ns)
+	} else {
+		df.columns[indexCol] = *ns
+	}
+	df.Size()
+	return nil
+}
+
+// Concat 合并两个表
+//
+//	isColumn：是否合并在右侧 ，如果两个表列名相同，则更新原表列
+func (df *DataFrame) Concat(d DataFrame, isColumn bool) error {
+	if isColumn && df.rows != d.rows {
+		return fmt.Errorf("rows must equal %d", df.rows)
+	} else if !isColumn && df.cols != d.cols {
+		return fmt.Errorf("columns must equal %d", df.cols)
+	}
+	if isColumn {
+		for _, column := range d.columns {
+			if err := df.AddCol("", column, nil); err != nil {
+				return err
+			}
+		}
+	} else {
+
+	}
+	return nil
+}
+
+// DropCols 批量删除
+func (df *DataFrame) DropCols(names ...string) {
+	df.columns = slices.DeleteFunc(df.columns, func(s series.Series) bool { return slices.Contains(names, s.Name) })
+}
+
+// Rename 批量命名
+func (df *DataFrame) Rename(cols map[string]string) {
+	for _, column := range df.columns {
+		if value, ok := cols[column.Name]; ok {
+			column.Name = value
+		} else {
+			fmt.Printf("column %s not found", column.Name)
+		}
+	}
+}
+
+// Arrange 排序
+func (df *DataFrame) Arrange(order ...Order) error {
+	frame := df.Copy()
+	for _, o := range order {
+		i := slices.IndexFunc(frame.Names(), func(s string) bool { return s == o.ColumnName })
+		if i == -1 {
+			return fmt.Errorf("column %s not found", o.ColumnName)
+		}
+		indexes := frame.columns[i].SortIndex(o.Reverse)
+		for i := 0; i < frame.cols; i++ {
+			ns, _ := frame.columns[i].SubSet(indexes...)
+			ns.InitIndex()
+			frame.columns[i] = *ns
+		}
+	}
+	df.columns = frame.columns
+	return nil
+}
+
+func (df *DataFrame) SubSet(indexes ...int) (*DataFrame, error) {
+	frame := df.Copy()
+	for i := 0; i < frame.cols; i++ {
+		set, err := frame.columns[i].SubSet(indexes...)
+		if err != nil {
+			return nil, err
+		}
+		frame.columns[i] = *set
+	}
+	return frame, nil
+}
+
+// Filter 过滤
+func (df *DataFrame) Filter(filters ...F) (*DataFrame, error) {
+	var indexes []int
+	for _, filter := range filters {
+		ns := df.Columns(filter.Column)
+		if s, err := ns.Filter(filter.Operator, filter.values); err != nil {
+			return nil, err
+		} else {
+			if filter.OR {
+				indexes = slices.Compact(append(indexes, s.Indexes()...))
+			} else {
+				indexes = data.Overlap(indexes, s.Indexes())
+			}
+		}
+	}
+	set, err := df.SubSet(indexes...)
+	if err != nil {
+		return nil, err
+	}
+	return set, nil
+}
+
+// Order 排序结构
+type Order struct {
+	// 列名
+	ColumnName string
+	// 倒叙
+	Reverse bool
+}
+
+// SortByForward 正序
+func SortByForward(name string) Order {
+	return Order{ColumnName: name, Reverse: false}
+}
+
+// SortByReverse 倒叙
+func SortByReverse(name string) Order {
+	return Order{ColumnName: name, Reverse: true}
+}
+
+// F 过滤条件
+//
+//	OR与前一个过滤的关系
+type F struct {
+	Column   string
+	Operator series.Operator
+	values   any
+	OR       bool
+}
+
+// 判断切片长度是否相等
+func equalLength(values any, baseLen int) bool {
+	value := reflect.ValueOf(values)
+	if reflect.TypeOf(values).Kind() == reflect.Slice {
+		for i := 0; i < value.Len(); i++ {
+			var l int
+			if value.Index(i).Type().String() == "series.Series" {
+				l = int(value.Index(i).MethodByName("Len").Int())
+			} else {
+				l = reflect.ValueOf(value.Index(i).Interface()).Len()
+			}
+
+			if baseLen == 0 {
+				baseLen = l
+			}
+
+			if baseLen != l {
+				return false
+			}
+		}
+	} else if reflect.TypeOf(values).Kind() == reflect.Map {
+		it := value.MapRange()
+		for it.Next() {
+			if baseLen == 0 {
+				baseLen = reflect.ValueOf(it.Value().Interface()).Len()
+			}
+			if reflect.ValueOf(it.Value().Interface()).Len() != baseLen {
+				return false
+			}
+		}
+	}
+
+	return true
 }
