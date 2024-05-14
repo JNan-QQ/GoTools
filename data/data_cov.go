@@ -1,3 +1,13 @@
+/**
+  Copyright (c) [2024] [JiangNan]
+  [go-tools] is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+           http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+*/
+
 /*
 	data 为数据处理/转化的简单包
 */
@@ -8,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -94,7 +105,7 @@ func Cn2an(cn string) (int, error) {
 	var cnList []string
 
 	for _, b := range cn {
-		cnList = Insert(cnList, 0, string(b))
+		slices.Insert(cnList, 0, string(b))
 	}
 
 	if _, ok := unitCn2an[cnList[len(cnList)-1]]; ok {
@@ -157,4 +168,14 @@ func IsDigit(s string) bool {
 		}
 	}
 	return true
+}
+
+// HanCount 计算字符串中 汉字个数
+func HanCount(str string) (count int) {
+	for _, char := range str {
+		if unicode.Is(unicode.Han, char) {
+			count++
+		}
+	}
+	return
 }
