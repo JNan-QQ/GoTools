@@ -1,3 +1,13 @@
+/**
+  Copyright (c) [2024] [JiangNan]
+  [go-tools] is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+           http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+*/
+
 package dataFrame
 
 import (
@@ -19,11 +29,10 @@ type DataFrame struct {
 
 // New 创建 DataFrame 数据对象
 //
-//	columns: 待输入数据，可以为 []series.Series 、[]T T = []int / []float64 / []string / []bool
+//	columns: 待输入数据，可以为 []any 。series.Series / []int / []float64 / []string / []bool
 //	colsName: 列名，当 columns 为 series.Series 可为nil
-func New[S interface{ ~[]any }](columns S, colsName []string) (*DataFrame, error) {
+func New(columns []any, colsName []string) (*DataFrame, error) {
 	df := &DataFrame{columns: make([]series.Series, 0), cols: 0, rows: 0}
-
 	if columns == nil {
 		return df, nil
 	} else if !equalLength(columns, 0) {
@@ -67,7 +76,7 @@ func LoadRecord(rows [][]string, colsName []string, colsType []series.Type) (*Da
 		return nil, fmt.Errorf("输入数据不能为空")
 	} else if !equalLength(rows, 0) {
 		return nil, fmt.Errorf("各子切片数据个数不同")
-	} else if len(rows) != len(colsType) {
+	} else if len(rows[0]) != len(colsType) {
 		return nil, fmt.Errorf("数据列数与类型列数不相等")
 	}
 	// 判断 数据列数是否与类型、名称对应
@@ -105,6 +114,9 @@ func LoadRecord(rows [][]string, colsName []string, colsType []series.Type) (*Da
 	return df, nil
 }
 
+// LoadMap 通过列名集合创建表
+//
+//	values map[string]T, T = []int、[]string、[]float64、[]bool
 func LoadMap(values map[string]any) (*DataFrame, error) {
 	if values == nil {
 		return nil, fmt.Errorf("请输入数据")
@@ -176,10 +188,10 @@ func (df *DataFrame) Types() []string {
 
 // 自定义输出
 func (df *DataFrame) String() string {
-	return df.print(false)
+	return df.Print(false)
 }
 
-func (df *DataFrame) print(isComplete bool) (str string) {
+func (df *DataFrame) Print(isComplete bool) (str string) {
 
 	// 创建表格对象
 	table := termtables.CreateTable()
@@ -206,6 +218,7 @@ func (df *DataFrame) print(isComplete bool) (str string) {
 				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
 				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
 				table.AddRow(data.SliceToAny(strings.Split(strings.Repeat(".", df.cols+1), ""))...)
+				continue
 			} else if i > 15 && i < df.rows-6 {
 				continue
 			}
@@ -240,12 +253,28 @@ func (df *DataFrame) NRows() int {
 }
 
 // Columns 返回列
-func (df *DataFrame) Columns(name string) series.Series {
-	indexCol := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == name })
-	if indexCol == -1 {
-		return series.Series{}
+func (df *DataFrame) Columns(name string) (series.Series, error) {
+	if indexCol := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == name }); indexCol == -1 {
+		return series.Series{}, fmt.Errorf("name: %s is not found", name)
 	} else {
-		return df.columns[indexCol]
+		return df.columns[indexCol], nil
+	}
+}
+
+func (df *DataFrame) SelectCols(names ...string) *DataFrame {
+	var elements []any
+	for _, name := range names {
+		if indexCol := slices.IndexFunc(df.columns, func(s series.Series) bool { return s.Name == name }); indexCol == -1 {
+			return nil
+		} else {
+			elements = append(elements, *df.columns[indexCol].Copy())
+		}
+	}
+
+	if frame, err := New(elements, nil); err != nil {
+		return nil
+	} else {
+		return frame
 	}
 }
 
@@ -263,7 +292,7 @@ func (df *DataFrame) Rows(r int) map[string]series.Element {
 
 // Cell 返回指定单元格元素
 func (df *DataFrame) Cell(r int, name string) series.Element {
-	s := df.Columns(name)
+	s, _ := df.Columns(name)
 	return s.Element(r)
 }
 
@@ -388,20 +417,35 @@ func (df *DataFrame) AddCol(name string, values any, defaultValue any) error {
 // Concat 合并两个表
 //
 //	isColumn：是否合并在右侧 ，如果两个表列名相同，则更新原表列
-func (df *DataFrame) Concat(d DataFrame, isColumn bool) error {
-	if isColumn && df.rows != d.rows {
+func (df *DataFrame) Concat(x DataFrame, isColumn bool) error {
+	if isColumn && df.rows != x.rows {
 		return fmt.Errorf("rows must equal %d", df.rows)
-	} else if !isColumn && df.cols != d.cols {
+	} else if !isColumn && df.cols != x.cols {
 		return fmt.Errorf("columns must equal %d", df.cols)
 	}
 	if isColumn {
-		for _, column := range d.columns {
+		for _, column := range x.columns {
 			if err := df.AddCol("", column, nil); err != nil {
 				return err
 			}
 		}
 	} else {
-
+		n1, n2 := df.Names(), x.Names()
+		slices.Sort(n1)
+		slices.Sort(n2)
+		if !slices.Equal(n1, n2) {
+			return fmt.Errorf("两个表列名不相同")
+		}
+		for i, name := range df.Names() {
+			ns, err := x.Columns(name)
+			if err != nil {
+				return err
+			}
+			if err := df.columns[i].Append(*ns.Copy()); err != nil {
+				return err
+			}
+		}
+		df.Size()
 	}
 	return nil
 }
@@ -409,6 +453,7 @@ func (df *DataFrame) Concat(d DataFrame, isColumn bool) error {
 // DropCols 批量删除
 func (df *DataFrame) DropCols(names ...string) {
 	df.columns = slices.DeleteFunc(df.columns, func(s series.Series) bool { return slices.Contains(names, s.Name) })
+	df.Size()
 }
 
 // Rename 批量命名
@@ -450,6 +495,7 @@ func (df *DataFrame) SubSet(indexes ...int) (*DataFrame, error) {
 		}
 		frame.columns[i] = *set
 	}
+	frame.Size()
 	return frame, nil
 }
 
@@ -457,11 +503,16 @@ func (df *DataFrame) SubSet(indexes ...int) (*DataFrame, error) {
 func (df *DataFrame) Filter(filters ...F) (*DataFrame, error) {
 	var indexes []int
 	for _, filter := range filters {
-		ns := df.Columns(filter.Column)
+		ns, err := df.Columns(filter.Column)
+		if err != nil {
+			return nil, err
+		}
 		if s, err := ns.Filter(filter.Operator, filter.values); err != nil {
 			return nil, err
 		} else {
-			if filter.OR {
+			if indexes == nil {
+				indexes = s.Indexes()
+			} else if filter.OR {
 				indexes = slices.Compact(append(indexes, s.Indexes()...))
 			} else {
 				indexes = data.Overlap(indexes, s.Indexes())
@@ -498,7 +549,7 @@ func SortByReverse(name string) Order {
 //	OR与前一个过滤的关系
 type F struct {
 	Column   string
-	Operator series.Operator
+	Operator series.RelationalOperator
 	values   any
 	OR       bool
 }
@@ -536,4 +587,64 @@ func equalLength(values any, baseLen int) bool {
 	}
 
 	return true
+}
+
+func (df *DataFrame) Groups(names ...string) (map[string]*DataFrame, error) {
+	if names == nil {
+		return nil, fmt.Errorf("names is nil")
+	}
+	var ns *series.Series
+	for i, name := range names {
+		ns1, err := df.Columns(name)
+		if err != nil {
+			return nil, err
+		}
+		if i == 0 {
+			ns = ns1.Copy()
+			if err = ns.SetType(series.String); err != nil {
+				return nil, err
+			}
+			ns.Name = "_" + ns.Name
+		} else {
+			ns, err = ns.Arithmetic(series.Addition, ns1)
+			if err != nil {
+				return nil, err
+			}
+			ns.Name += "_" + ns1.Name
+		}
+	}
+
+	frame := df.Copy()
+	err := frame.AddCol("", ns, "")
+	if err != nil {
+		return nil, err
+	}
+
+	group := make(map[string]*DataFrame, 0)
+	for _, s := range slices.Compact(ns.Records()) {
+		df1, err := frame.Filter(F{
+			Column:   ns.Name,
+			Operator: series.Equal,
+			values:   s,
+			OR:       false,
+		})
+		if err != nil {
+			return nil, err
+		}
+		df1.DropCols(ns.Name)
+		group[s] = df1
+	}
+
+	return group, nil
+}
+
+func (df *DataFrame) FormatCols(f func(index int, elem series.Element) series.Element, cols ...string) error {
+	for _, col := range cols {
+		column, err := df.Columns(col)
+		if err != nil {
+			return err
+		}
+		column.Format(f)
+	}
+	return nil
 }
