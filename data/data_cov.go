@@ -1,3 +1,13 @@
+/**
+  Copyright (c) [2024] [JiangNan]
+  [go-tools] is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+           http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+*/
+
 /*
 	data 为数据处理/转化的简单包
 */
@@ -168,31 +178,4 @@ func HanCount(str string) (count int) {
 		}
 	}
 	return
-}
-
-// ColorStr 设置字体颜色
-//
-// 前景 背景 颜色
-// ---------------------------------------
-//
-//	 30  40  黑色
-//		31  41  红色
-//		32  42  绿色
-//		33  43  黄色
-//		34  44  蓝色
-//		35  45  紫红色
-//		36  46  青蓝色
-//		37  47  白色
-//
-// 代码 意义
-// -------------------------
-//
-//	0  终端默认设置
-//	1  高亮显示
-//	4  使用下划线
-//	5  闪烁
-//	7  反白显示
-//	8  不可见
-func ColorStr(msg string, conf, bg, text int) string {
-	return fmt.Sprintf("%c[%d;%d;%dm%s%c[0m", 0x1B, conf, bg, text, msg, 0x1B)
 }
